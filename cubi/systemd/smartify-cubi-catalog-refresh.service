@@ -1,0 +1,16 @@
+[Unit]
+Description=Smartify Cubi private customer package sync
+Wants=network-online.target
+After=network-online.target tailscaled.service
+
+[Service]
+Type=oneshot
+User=smartify
+Group=smartify
+ExecStart=/usr/bin/bash /usr/local/lib/smartify/cubi/refresh.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/smartify
+TimeoutStartSec=180
