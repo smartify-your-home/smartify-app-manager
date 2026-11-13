@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased – Cubi global App allowlist (server-side preparation)
+
+- Add `cubi/package_policy.py` with validated, fail-closed global GitHub synchronization and publication allowlists. New/unknown repositories are denied.
+- Only SEP is enabled in the example configuration. Internal-only apps can be synchronized without customer publication, but require explicit approval.
+- Add audit of unexpected entries in the static public Tailscale Serve release folder (including symlinks), duplicate-field/path validation and isolated offline regression tests.
+- Distinguish **global sync/publication** from future per-customer app entitlements and PIN authorization.
+- This prepares server-side enforcement; current LXC services, public release directory and customer runtime are unchanged.
+
+
 ## Unreleased – Cubi customer distribution architecture
 
 - Document multi-app Cubi package catalogue as the intended customer-facing source of downloads and updates; native Home Assistant update entities check every 120 seconds for supported apps.
