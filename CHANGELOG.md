@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased – Tailscale HTTPS test follow-up (based on 0.3.0)
+
+- Allow the exact `https://smartify-packages.tail8ff129.ts.net` URL on port 443 in the Kubi package-source backend; existing RFC1918 HTTP tests remain available.
+- Keep the SSRF allowlist narrow: arbitrary hostnames, ports, redirects and paths are rejected.
+- Add security regression tests and update the HA panel guidance; no running SEP installation is modified.
+- Development branch only; no production release or signed release metadata claimed.
+
 ## [0.3.0] - 2026-11-13 (candidate; not yet released)
 
 ### Added
