@@ -1,4 +1,4 @@
-# Smartify App Manager v0.2.0
+# Smartify App Manager v0.3.0
 
 Central, administrator-only Home Assistant panel for the Smartify extension family.
 
@@ -12,6 +12,16 @@ Central, administrator-only Home Assistant panel for the Smartify extension fami
 - HA administrator-only panel; PIN creation/change and PIN-protected per-module catalog lock labels.
 - Respects Home Assistant themes.
 - **No trial period, trial timer, commercial licensing, subscription or expiry.**
+
+## Kubi SEP package source (new in 0.3.0)
+
+- Open the Smartify panel as a Home Assistant administrator. Under **Kubi-Paketserver** enter your LAN test server, e.g. `http://192.168.2.122:8765`, and select **Server speichern**.
+- Select **Verbindung prüfen**. Home Assistant reads `/sep/latest.json` from the configured server and displays the latest approved SEP version.
+- Select **Geprüftes ZIP nach Home Assistant laden**. HA fetches only the expected `smartify-energy-pro-X.Y.Z.zip` archive, validates metadata, SHA-256, ZIP structure and manifest version, and saves it under `/config/smartify-downloads/sep/`.
+- The download **does not install, overwrite or update** the running SEP integration. An already downloaded version is immutable; different content is rejected.
+- The server address must be a literal RFC1918 IPv4 HTTP URL. No hostnames, redirects or public IPs, to reduce server-side request forgery exposure.
+- **LAN proof of concept only**: the temporary Python HTTP server has no authentication or TLS. SHA-256 protects against accidental corruption relative to the retrieved metadata, not malicious modification of both ZIP and metadata. Never expose port 8765 to the Internet or use this endpoint for customers. Replace it with an authenticated HTTPS delivery service before production.
+- Kubi metadata refresh is independent of the existing six-hour **GitHub catalog** refresh. Each status check contacts Kubi directly.
 
 ## Important limitations
 
