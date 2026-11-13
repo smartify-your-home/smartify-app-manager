@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 import time
 
-import voluptuous as vol
+import probatio
 from homeassistant.components import frontend, panel_custom, websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
@@ -48,7 +48,7 @@ def _check_pin(state: dict, pin: str) -> bool:
 
 
 @websocket_api.require_admin
-@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/catalog"})
+@websocket_api.websocket_command({probatio.Required("type"): f"{DOMAIN}/catalog"})
 @callback
 def websocket_catalog(hass, connection, msg) -> None:
     state = hass.data.get(DOMAIN)
@@ -67,7 +67,7 @@ def websocket_catalog(hass, connection, msg) -> None:
 
 
 @websocket_api.require_admin
-@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/refresh"})
+@websocket_api.websocket_command({probatio.Required("type"): f"{DOMAIN}/refresh"})
 @websocket_api.async_response
 async def websocket_refresh(hass, connection, msg) -> None:
     state = hass.data.get(DOMAIN)
@@ -84,9 +84,9 @@ async def websocket_refresh(hass, connection, msg) -> None:
 
 @websocket_api.require_admin
 @websocket_api.websocket_command({
-    vol.Required("type"): f"{DOMAIN}/set_pin",
-    vol.Required("new_pin"): vol.All(str, vol.Length(min=6, max=32)),
-    vol.Optional("old_pin", default=""): str,
+    probatio.Required("type"): f"{DOMAIN}/set_pin",
+    probatio.Required("new_pin"): str,
+    probatio.Optional("old_pin", default=""): str,
 })
 @websocket_api.async_response
 async def websocket_set_pin(hass, connection, msg) -> None:
@@ -95,6 +95,9 @@ async def websocket_set_pin(hass, connection, msg) -> None:
         connection.send_error(msg["id"], "not_loaded", "Smartify Manager nicht geladen")
         return
     settings = state["settings"]
+    if not 6 <= len(msg["new_pin"]) <= 32:
+        connection.send_error(msg["id"], "invalid_format", "PIN muss 6 bis 32 Zeichen haben")
+        return
     if settings.get("pin_hash") and not _check_pin(state, msg["old_pin"]):
         connection.send_error(msg["id"], "invalid_pin", "Bisherige PIN ungültig")
         return
@@ -107,10 +110,10 @@ async def websocket_set_pin(hass, connection, msg) -> None:
 
 @websocket_api.require_admin
 @websocket_api.websocket_command({
-    vol.Required("type"): f"{DOMAIN}/set_lock",
-    vol.Required("app_id"): str,
-    vol.Required("locked"): bool,
-    vol.Required("pin"): str,
+    probatio.Required("type"): f"{DOMAIN}/set_lock",
+    probatio.Required("app_id"): str,
+    probatio.Required("locked"): bool,
+    probatio.Required("pin"): str,
 })
 @websocket_api.async_response
 async def websocket_set_lock(hass, connection, msg) -> None:
