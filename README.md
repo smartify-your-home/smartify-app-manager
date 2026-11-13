@@ -1,5 +1,8 @@
 # Smartify App Manager v0.3.0
 
+> **Customer distribution roadmap:** Smartify Manager is the future customer-facing download/install/update interface for **all** Smartify apps, with Cubi (LXC 230) as the sole package source. New app installations require a **server-side Cubi-validated customer PIN**. The existing administrator PIN only protects catalog labels; it is not install authorization. See [Customer Distribution](docs/CUSTOMER_DISTRIBUTION.md). A protected package gateway and all-app Cubi catalog are not live yet. Existing SEP ZIP downloads remain test-only and do not install software.
+
+
 Central, administrator-only Home Assistant panel for the Smartify extension family.
 
 ## Features
