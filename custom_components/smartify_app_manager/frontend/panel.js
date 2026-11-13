@@ -1,4 +1,4 @@
-/** Smartify App Manager v0.2.0 – standalone, theme-aware Home Assistant panel. */
+/** Smartify App Manager v0.3.0 – standalone, theme-aware Home Assistant panel. */
 class SmartifyAppManagerPanel extends HTMLElement {
   constructor() {
     super();
@@ -11,6 +11,8 @@ class SmartifyAppManagerPanel extends HTMLElement {
     this._success = '';
     this._lastSynced = null;
     this._syncError = null;
+    this._kubi = {configured:false,connected:false,url:''};
+    this._downloadInfo = null;
   }
   set hass(value) {
     this._hass = value;
@@ -29,6 +31,34 @@ class SmartifyAppManagerPanel extends HTMLElement {
       this._error = '';
     } catch (err) { this._error = String(err.message || err); }
     finally { this._busy = false; this.render(); }
+    if (this._loaded) await this.checkKubi();
+  }
+  async checkKubi() {
+    if (!this._hass) return;
+    try {
+      this._kubi = await this._hass.callWS({type:'smartify_app_manager/kubi_status'});
+    } catch (err) {
+      this._kubi = {configured:true,connected:false,url:this._kubi.url || '',error:String(err.message||err)};
+    }
+    this.render();
+  }
+  kubiPanel(escape) {
+    const k=this._kubi;
+    const status = k.connected
+      ? '<span class="ok">● Verbunden</span> · SEP <strong>'+escape(k.version)+'</strong> · SHA-256 '+escape((k.sha256||'').slice(0,12))+'…'
+      : k.configured
+        ? '<span class="warn">● Nicht erreichbar</span> · '+escape(k.error||'Bitte Verbindung prüfen')
+        : 'Noch keine Paketquelle eingerichtet';
+    return [
+      '<section class="panel"><h2>Kubi-Paketserver · Smartify Energy Pro</h2>',
+      '<p class="notice">Lädt freigegebene SEP-Pakete nach Home Assistant. Keine automatische Installation. Nur für lokale LAN-Tests ohne Anmeldung oder Verschlüsselung.</p>',
+      '<div class="pinrow"><input id="kubi-url" style="max-width:310px;min-width:220px;flex:1" aria-label="Kubi Paketserver URL" placeholder="http://192.168.2.122:8765" autocomplete="off" spellcheck="false" value="'+escape(k.url||'')+'">',
+      '<button id="kubi-save">Server speichern</button><button id="kubi-check">Verbindung prüfen</button></div>',
+      '<div class="notice" style="margin-top:12px">'+status+'</div>',
+      k.connected?'<div class="buttons" style="margin-top:12px"><button id="kubi-download" class="primary">Geprüftes ZIP nach Home Assistant laden</button></div><p class="notice">Ziel: /config/smartify-downloads/sep/ · Installierte SEP-Version unverändert.</p>':'',
+      this._downloadInfo?'<p class="notice ok" role="status">Gespeichert: '+escape(this._downloadInfo.destination)+' (SEP '+escape(this._downloadInfo.version)+')</p>':'',
+      '</section>'
+    ].join('');
   }
   render() {
     const escape = v => String(v ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -45,7 +75,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
         input{background:var(--secondary-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color);padding:10px;border-radius:8px;max-width:230px}.tag{font-size:11px;border:1px solid var(--divider-color);border-radius:20px;padding:3px 8px;display:inline-block}.warn{color:var(--error-color)}.ok{color:var(--success-color,var(--primary-color))}.notice{font-size:13px;line-height:1.5}.pinrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px}
       </style>
       <main class="wrap">
-        <div class="head"><div><h1>Smartify App Manager</h1><p>Zentrale Übersicht deiner Smartify-Erweiterungen</p></div><span class="tag">v0.2.0 · ohne Testzeitraum</span></div>
+        <div class="head"><div><h1>Smartify App Manager</h1><p>Zentrale Übersicht deiner Smartify-Erweiterungen</p></div><span class="tag">v0.3.0 · ohne Testzeitraum</span></div>
         <div class="controls"><span class="count">${this._apps.length} Module im Katalog</span><button id="refresh">Mit GitHub abgleichen</button></div>
         <p class="notice">Automatische Synchronisierung alle 6 Stunden · Letzter Abgleich: ${this._lastSynced?escape(new Date(this._lastSynced).toLocaleString('de-AT')):'noch keiner'} · manueller Abgleich frühestens alle 10 Minuten</p>
         ${this._syncError?`<p class="warn" role="status">${escape(this._syncError)}</p>`:''}
@@ -53,10 +83,15 @@ class SmartifyAppManagerPanel extends HTMLElement {
         <section class="panel"><h2>Smartify Apps</h2><div class="notice">Installation und Updates erfolgen über Home Assistant / HACS. Hier kannst du das jeweilige Repository öffnen. „Sperren“ ist derzeit nur ein Verwaltungskennzeichen und <strong>deaktiviert keine laufende Integration</strong>.</div>
           <div class="grid">${this._apps.map(app=>`<article class="app"><div class="apphead"><span class="logo">${({'energy-pro':'⚡','flow-card':'🔀','weather-card':'☁️','person-detection':'📷','floorplan3d':'🏠','sip-manager':'☎️','themes':'🎨','heating':'🌡️','raffstore':'🪟','tailnet-viewer':'🌐','tabbar':'📑','row-card':'▤'})[app.id]||'◼'}</span><div><div class="name">${escape(app.name)}</div><div class="meta">${escape(app.category)} · ${app.latest_version?`GitHub: ${escape(app.latest_version)} · `:""}${app.new?"Neu entdeckt · ":""}${app.locked?'🔒 Gesperrt (Kennzeichen)':'Verfügbar'}</div></div></div><div class="buttons"><a class="button" href="${escape(app.url)}" target="_blank" rel="noopener noreferrer">Repository / Installation ↗</a>${app.release_url?`<a class="button" href="${escape(app.release_url)}" target="_blank" rel="noopener noreferrer">Release Notes ↗</a>`:""}<button data-id="${escape(app.id)}" data-locked="${app.locked?'false':'true'}">${app.locked?'Entsperren':'Sperren'}</button></div></article>`).join('')}</div>
         </section>
+        ${this.kubiPanel(escape)}
         <section class="panel"><h2>Administrator-PIN</h2><p class="notice">Mindestens 6 Zeichen. PIN schützt die Änderung der Modul-Kennzeichen. Die Anmeldung als HA-Administrator ist zusätzlich erforderlich.</p><div class="pinrow">${this._pinConfigured?'<input type="password" id="old" placeholder="Bisherige PIN" autocomplete="off">':''}<input type="password" id="new" placeholder="Neue PIN (mind. 6)" autocomplete="new-password"><button id="setpin">${this._pinConfigured?'PIN ändern':'PIN einrichten'}</button></div></section>
       </main>`;
     this.shadowRoot.querySelector('#refresh').onclick=()=>this.manualRefresh();
     this.shadowRoot.querySelector('#setpin').onclick=()=>this.setPin();
+    this.shadowRoot.querySelector('#kubi-save').onclick=()=>this.saveKubiUrl();
+    this.shadowRoot.querySelector('#kubi-check').onclick=()=>this.checkKubi();
+    const kubiDownload=this.shadowRoot.querySelector('#kubi-download');
+    if(kubiDownload)kubiDownload.onclick=()=>this.downloadKubi();
     this.shadowRoot.querySelectorAll('button[data-id]').forEach(button=>button.onclick=()=>this.setLock(button.dataset.id,button.dataset.locked==='true'));
   }
   async manualRefresh() {
@@ -68,6 +103,40 @@ class SmartifyAppManagerPanel extends HTMLElement {
       this._error = String(err.message || err);
     }
     await this.refresh();
+  }
+  async saveKubiUrl(){
+    const url=this.shadowRoot.querySelector('#kubi-url').value.trim();
+    try {
+      const result=await this._hass.callWS({type:'smartify_app_manager/kubi_set_url',url});
+      this._kubi={configured:!!result.url,connected:false,url:result.url};
+      this._downloadInfo=null;
+      this._success=result.url?'Kubi-Paketquelle gespeichert.':'Kubi-Paketquelle deaktiviert.';
+      this._error='';
+      await this.checkKubi();
+    } catch(err) {
+      this._error=String(err.message||err);
+      this.render();
+    }
+  }
+  async downloadKubi(){
+    if(!this._kubi.connected || this._busy)return;
+    this._busy=true;
+    this._downloadInfo=null;
+    this._error='';
+    this._success='SEP-Paket wird heruntergeladen und geprüft…';
+    this.render();
+    try {
+      const result=await this._hass.callWS({type:'smartify_app_manager/kubi_download'});
+      this._downloadInfo=result;
+      this._success='SEP-Paket geprüft und lokal in Home Assistant gespeichert.';
+      this._error='';
+    } catch(err) {
+      this._success='';
+      this._error=String(err.message||err);
+    } finally {
+      this._busy=false;
+      this.render();
+    }
   }
   async setPin(){
     const new_pin=this.shadowRoot.querySelector('#new').value;
