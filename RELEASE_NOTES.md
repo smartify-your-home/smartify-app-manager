@@ -1,6 +1,9 @@
 # Release Notes
 
-## Unreleased development fix – Tailscale HTTPS endpoint
+## Unreleased development fixes – Tailscale HTTPS and compact app list
+
+- Replace the app tile grid with compact list rows. On wide screens actions stay on the same row; on mobile screens they move beneath the app details.
+- Keep repository/release links and PIN-protected catalog lock actions unchanged; no effect on the installed SEP integration.
 
 - The 0.3.0 development build rejected all HTTPS URLs. The package-source validation now permits the exact private Tailscale Serve address `https://smartify-packages.tail8ff129.ts.net`, with the canonical HTTPS port 443.
 - LAN HTTP access via a literal RFC1918 IPv4 URL continues to work; arbitrary HTTPS hosts, extra paths and alternative ports remain blocked.
