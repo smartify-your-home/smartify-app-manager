@@ -136,3 +136,94 @@ def newer(installed: str | None, available: str) -> bool:
     if not installed:
         return False
     return tuple(int(p) for p in available.split(".")) > tuple(int(p) for p in installed.split("."))
+
+
+# The shared coordinator is independent of the GitHub developer catalog. It
+# polls even when the Smartify sidebar panel is closed.
+from datetime import timedelta
+import logging
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _read_local_versions(config_dir: str, apps: list[dict], receipts: dict) -> dict:
+    return {app["id"]: installed_version(config_dir, app, receipts) for app in apps}
+
+
+def _write_icon(path: str, content: bytes) -> None:
+    if not content.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise KubiError("Cubi lieferte kein gültiges PNG-App-Icon")
+    file = Path(path)
+    if file.is_symlink() or file.parent.is_symlink():
+        raise KubiError("Unsicherer Icon-Cache-Pfad")
+    file.parent.mkdir(parents=True, exist_ok=True)
+    temporary = file.with_name("." + file.name + ".tmp")
+    temporary.write_bytes(content)
+    temporary.replace(file)
+
+
+class CubiCatalogCoordinator(DataUpdateCoordinator[dict]):
+    """Fetch only globally approved packages from Cubi every 120 seconds."""
+
+    def __init__(self, hass, entry, settings: dict) -> None:
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=entry,
+            name="Cubi Smartify Kundenkatalog",
+            update_interval=timedelta(minutes=2),
+        )
+        self.settings = settings
+
+    async def _sync_icons(self, base_url: str, apps: list[dict]) -> None:
+        """Cache original Cubi icons in HA; browsers need no Tailnet DNS."""
+        session = async_get_clientsession(self.hass)
+        for app in apps:
+            path = app.get("icon")
+            if not path:
+                continue
+            name = f"{app['id']}-{app['version']}.png"
+            destination = self.hass.config.path(
+                "www", "smartify-manager-icons", name
+            )
+            if Path(destination).is_file():
+                app["local_icon_url"] = f"/local/smartify-manager-icons/{name}"
+                continue
+            try:
+                async with session.get(
+                    base_url + path,
+                    allow_redirects=False,
+                    timeout=ClientTimeout(total=8, sock_connect=4),
+                ) as response:
+                    if response.status != 200:
+                        continue
+                    raw = await response.content.read(1024 * 1024 + 1)
+                    if len(raw) > 1024 * 1024:
+                        continue
+                await self.hass.async_add_executor_job(_write_icon, destination, raw)
+                app["local_icon_url"] = f"/local/smartify-manager-icons/{name}"
+            except (KubiError, ClientError, OSError, asyncio.TimeoutError) as exc:
+                LOGGER.debug("Cubi icon fetch for %s failed: %s", app["id"], exc)
+
+    async def _async_update_data(self) -> dict:
+        url = self.settings.get("kubi_url") or ""
+        if not url:
+            return {"configured": False, "apps": []}
+        try:
+            catalog = await fetch_catalog(self.hass, url)
+            apps = catalog["apps"]
+            receipts = self.settings.get("cubi_managed_versions", {})
+            local = await self.hass.async_add_executor_job(
+                _read_local_versions, self.hass.config.config_dir,
+                apps, receipts if isinstance(receipts, dict) else {},
+            )
+            for app in apps:
+                app["installed_version"] = local.get(app["id"])
+                app["update_available"] = newer(
+                    app["installed_version"], app["version"]
+                )
+            await self._sync_icons(validate_server_url(url), apps)
+            return {"configured": True, "apps": apps}
+        except (KubiError, OSError) as err:
+            raise UpdateFailed(f"Cubi-Katalog derzeit nicht erreichbar: {err}") from err
