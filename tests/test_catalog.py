@@ -11,7 +11,20 @@ class CatalogTests(unittest.TestCase):
     def test_manifest(self):
         d=json.loads((MODULE/'manifest.json').read_text())
         self.assertEqual(d['domain'],'smartify_app_manager')
-        self.assertEqual(d['version'],'0.1.0')
+        self.assertEqual(d['version'],'0.2.0')
+    def test_marketplace_manifest(self):
+        d=json.loads((ROOT/'hacs.json').read_text())
+        self.assertEqual(d['name'], 'Smartify App Manager')
+        self.assertIn('homeassistant', d)
+        self.assertTrue((MODULE/'manifest.json').exists())
+
+    def test_sync_uses_interval_and_owner_filter(self):
+        src=(MODULE/'catalog_sync.py').read_text()
+        compile(src, str(MODULE/'catalog_sync.py'), 'exec')
+        self.assertIn('REFRESH_SECONDS = 6 * 60 * 60', src)
+        self.assertIn('MANUAL_MIN_SECONDS = 10 * 60', src)
+        self.assertIn('GITHUB_OWNER', src)
+
     def test_catalog_unique_and_safe(self):
         tree=ast.parse((MODULE/'const.py').read_text())
         item=next(x for x in tree.body if isinstance(x,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='APPS' for t in x.targets))
