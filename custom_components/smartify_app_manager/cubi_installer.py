@@ -143,6 +143,48 @@ def _install_verified_archive(
         raise KubiError(f"Paketinstallation fehlgeschlagen: {err}") from err
 
 
+DASHBOARD_RESOURCE_PATHS = {
+    "weather-card": "/local/smartify/weather-card/smartify-weather-chart.js",
+    "raffstore": "/local/smartify/raffstore/smartify-raffstore.js",
+    "tabbar": "/local/smartify/tabbar/smartify-tabbar.js",
+}
+
+
+async def _ensure_dashboard_resource(hass, app: dict) -> tuple[bool, str | None]:
+    """Register/update a JS module in storage mode; leave YAML mode untouched."""
+    path = DASHBOARD_RESOURCE_PATHS.get(app["id"])
+    if not path:
+        return False, None
+    resource_url = f"{path}?v={app['version']}"
+    lovelace = hass.data.get("lovelace")
+    if lovelace is None or lovelace.resource_mode != "storage":
+        return True, resource_url
+    resources = lovelace.resources
+    try:
+        # HA resource collections can be lazily initialized; failing to load
+        # first risks deleting all previously registered dashboard resources.
+        if not resources.loaded:
+            await resources.async_load()
+        existing = next(
+            (item for item in resources.async_items()
+             if item.get("url", "").split("?")[0] == path),
+            None,
+        )
+        if existing:
+            await resources.async_update_item(
+                existing["id"], {"url": resource_url, "res_type": "module"}
+            )
+        else:
+            await resources.async_create_item(
+                {"url": resource_url, "res_type": "module"}
+            )
+        return False, resource_url
+    except (AttributeError, KeyError, ValueError, OSError):
+        # The installed JS is still valid, but resource registration must be
+        # completed by the administrator through the HA dashboard UI.
+        return True, resource_url
+
+
 async def install_cubi_app(hass, base_url: str, app: dict) -> dict:
     """Download one validated zip, then run the blocking filesystem work."""
     base = validate_server_url(base_url)
@@ -174,7 +216,12 @@ async def install_cubi_app(hass, base_url: str, app: dict) -> dict:
     backup = await hass.async_add_executor_job(
         _install_verified_archive, hass.config.config_dir, app, data
     )
+    manual_resource, resource_url = await _ensure_dashboard_resource(hass, app)
+    if app["kind"] == "theme" and hass.services.has_service("frontend", "reload_themes"):
+        await hass.services.async_call("frontend", "reload_themes", blocking=True)
     return {
         "id": app["id"], "version": app["version"], "backup": backup,
         "restart_required": app["restart_required"],
+        "manual_resource_required": manual_resource,
+        "resource_url": resource_url,
     }
