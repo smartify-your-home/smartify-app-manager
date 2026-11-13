@@ -32,8 +32,8 @@ No GitHub Actions schedules or external customer tokens are needed.
 Settings and remote catalog are persisted in `.storage/smartify_app_manager.settings` through HA Store. Existing v0.1.0 PIN and lock flags are retained. The Catalog survives temporary GitHub outages.
 
 ## Kubi SEP source (0.3.0 candidate)
-- `kubi_source.py` implements a constrained HTTP-to-RFC1918-IPv4 package retrieval path; the Home Assistant backend fetches the metadata, not the browser.
+- `kubi_source.py` implements a constrained HTTP-to-RFC1918-IPv4 or pinned Smartify Tailscale HTTPS package retrieval path; the Home Assistant backend fetches the metadata, not the browser.
 - The admin-only WebSocket commands set and persist the URL in the existing Store, report validated release metadata, and download ZIPs after SHA-256 and archive manifest verification.
 - ZIPs are kept separately in `/config/smartify-downloads/sep/`; the running integration is never modified. Existing per-version files are not overwritten with different bytes.
 - Kubi access is not related to the six-hour public GitHub catalog synchronization and has no timer; the panel explicitly refreshes it.
-- The Python `http.server` used on Kubi is a temporary test-only LAN server, not a secure customer download service. Its metadata and checksum have no cryptographic origin authentication. For production use HTTPS, authentication, release signing, and customer entitlements.
+- The Python `http.server` used on Kubi is a temporary test-only LAN server, not a secure customer download service. Its metadata and checksum have no cryptographic origin authentication. Tailscale Serve provides a restricted HTTPS transport for shared customers, without port forwarding. For production complete release signing, scoped access controls and customer entitlements.

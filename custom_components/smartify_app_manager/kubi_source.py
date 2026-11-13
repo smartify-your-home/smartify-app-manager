@@ -1,7 +1,7 @@
-"""LAN-only SEP release metadata and verified archive download for HA admins.
+"""Constrained SEP release metadata and verified archive download for HA admins.
 
-SHA-256 verifies the downloaded ZIP against Kubi's metadata, but does not
-authenticate the server. A secured HTTPS portal is required for customers.
+SHA-256 verifies a ZIP against Kubi metadata; TLS authenticates the pinned
+server, but release signing remains necessary before production.
 """
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ COMMIT = re.compile(r"^[0-9a-f]{40}$")
 MAX_ARCHIVE_BYTES = 30 * 1024 * 1024
 MAX_UNCOMPRESSED_BYTES = 80 * 1024 * 1024
 MAX_METADATA_BYTES = 16 * 1024
+TRUSTED_TAILSCALE_HOST = "smartify-packages.tail8ff129.ts.net"
 PRIVATE_NETWORKS = tuple(ipaddress.ip_network(net) for net in (
     "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"
 ))
@@ -38,8 +39,12 @@ class KubiError(ValueError):
 
 
 def validate_server_url(raw: str) -> str:
-    """Accept only HTTP to literal RFC1918 IPv4 addresses; no DNS or redirects."""
-    if not isinstance(raw, str) or len(raw) > 120:
+    """Allow private LAN HTTP or the exact Smartify Tailscale HTTPS endpoint.
+
+    Keep a narrow destination allowlist: no arbitrary DNS name, public address,
+    redirect or user-supplied URL path for HA-side requests.
+    """
+    if not isinstance(raw, str) or len(raw) > 180:
         raise KubiError("Ungültige Serveradresse")
     raw = raw.strip().rstrip("/")
     if not raw:
@@ -47,16 +52,22 @@ def validate_server_url(raw: str) -> str:
     try:
         parts = urlsplit(raw)
         port = parts.port
-        address = ipaddress.IPv4Address(parts.hostname or "")
     except (ValueError, TypeError) as err:
-        raise KubiError("Bitte eine lokale IPv4-Adresse eingeben") from err
-    if (parts.scheme != "http" or parts.username or parts.password
-            or parts.path or parts.query or parts.fragment
-            or not any(address in network for network in PRIVATE_NETWORKS)):
-        raise KubiError("Nur HTTP-Adressen in privaten IPv4-Netzen erlaubt")
-    if port is None:
-        port = 80
-    return f"http://{address}:{port}"
+        raise KubiError("Ungültige Serveradresse") from err
+    if (parts.username is not None or parts.password is not None
+            or parts.path or parts.query or parts.fragment):
+        raise KubiError("Serveradresse darf keine Zugangsdaten oder Pfade enthalten")
+    if (parts.scheme == "https" and parts.hostname == TRUSTED_TAILSCALE_HOST
+            and port in (None, 443)):
+        return f"https://{TRUSTED_TAILSCALE_HOST}"
+    if parts.scheme == "http":
+        try:
+            address = ipaddress.IPv4Address(parts.hostname or "")
+        except (ValueError, TypeError) as err:
+            raise KubiError("Nur lokale IPv4-Adressen oder Smartify-Tailscale-HTTPS erlaubt") from err
+        if any(address in network for network in PRIVATE_NETWORKS):
+            return f"http://{address}:{80 if port is None else port}"
+    raise KubiError("Nur private HTTP-IPv4-Adressen oder Smartify-Tailscale-HTTPS erlaubt")
 
 
 def validate_metadata(payload: object) -> dict:
