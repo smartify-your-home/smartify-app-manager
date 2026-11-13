@@ -1,5 +1,7 @@
 # Smartify App Manager v0.3.0
 
+> **Cubi package allowlist:** New Smartify GitHub repositories are never automatically synchronized or offered to customers. Cubi has a separate global sync/publication policy with **default deny**, plus future per-customer entitlements. The allowlist reference implementation and example are under [`cubi/`](cubi/README.md); it is **not yet enabled on the running Cubi services**. The existing client GitHub catalog must be replaced with the Cubi-filtered catalog before customer production.
+
 > **Customer distribution roadmap:** Smartify Manager is the future customer-facing download/install/update interface for **all** Smartify apps, with Cubi (LXC 230) as the sole package source. New app installations require a **server-side Cubi-validated customer PIN**. The existing administrator PIN only protects catalog labels; it is not install authorization. See [Customer Distribution](docs/CUSTOMER_DISTRIBUTION.md). A protected package gateway and all-app Cubi catalog are not live yet. Existing SEP ZIP downloads remain test-only and do not install software.
 
 
