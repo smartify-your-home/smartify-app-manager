@@ -91,7 +91,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
       '<section class="panel"><h2>Cubi-Paketserver · Smartify Energy Pro</h2>',
       '<p class="notice">Lädt freigegebene SEP-Pakete nach Home Assistant. Lokaler LAN-Test per HTTP oder geschützter Zugriff per Tailscale HTTPS. Keine automatische Installation.</p>',
       '<div class="pinrow"><input id="kubi-url" style="max-width:310px;min-width:220px;flex:1" aria-label="Cubi Paketserver URL" placeholder="https://smartify-packages.tail8ff129.ts.net" autocomplete="off" spellcheck="false" value="'+escape(k.url||'')+'">',
-      '<button id="kubi-save">Server speichern</button><button id="kubi-check">Verbindung prüfen</button></div>',
+      '<button id="kubi-save">Server speichern</button><button id="kubi-check">Jetzt auf Updates prüfen</button></div>',
       '<div class="notice" style="margin-top:12px">'+status+'</div>',
       k.connected&&k.update_available?'<p class="notice ok" role="status"><strong>SEP-Update verfügbar: '+escape(k.installed_version)+' → '+escape(k.version)+'</strong> · Auch unter Home Assistant → Einstellungen → Updates sichtbar.</p>':'',
       k.connected?'<div class="buttons" style="margin-top:12px"><button id="kubi-download" class="primary">Geprüftes ZIP nach Home Assistant laden</button></div><p class="notice">Ziel: /config/smartify-downloads/sep/ · Installierte SEP-Version unverändert.</p>':'',
@@ -133,7 +133,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
       </style>
       <main class="wrap">
         <div class="head"><div><h1>Smartify App Manager</h1><p>Zentrale Übersicht deiner Smartify-Erweiterungen</p></div><span class="tag">v0.3.0 · ohne Testzeitraum</span></div>
-        <div class="controls"><span class="count">${this._apps.length} Module im Katalog</span><button id="refresh">Mit GitHub abgleichen</button></div>
+        <div class="controls"><span class="count">${this._apps.length} Module im Katalog</span><button id="refresh">App-Katalog aktualisieren</button></div>
         <p class="notice">Automatische Synchronisierung alle 6 Stunden · Letzter Abgleich: ${this._lastSynced?escape(new Date(this._lastSynced).toLocaleString('de-AT')):'noch keiner'} · manueller Abgleich frühestens alle 10 Minuten</p>
         ${this._syncError?`<p class="warn" role="status">${escape(this._syncError)}</p>`:''}
         ${this._error?`<p class="warn" role="alert">${escape(this._error)}</p>`:''}${this._success?`<p class="ok" role="status">${escape(this._success)}</p>`:''}
@@ -161,7 +161,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
   async manualRefresh() {
     try {
       const result = await this._hass.callWS({type:'smartify_app_manager/refresh'});
-      this._success = result.updated ? 'GitHub-Katalog erfolgreich abgeglichen.' : 'Kein neuer Abgleich (10-Minuten-Sperre oder GitHub nicht erreichbar).';
+      this._success = result.updated ? 'App-Katalog aktualisiert (derzeit GitHub-Übergangsquelle).' : 'Kein neuer Katalogabgleich (10-Minuten-Sperre oder GitHub nicht erreichbar).';
       this._error = '';
     } catch(err) {
       this._error = String(err.message || err);
