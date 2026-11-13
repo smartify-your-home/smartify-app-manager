@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0] – Private Cubi-Paketverteilung (Entwicklungskandidat, unveröffentlicht)
+
+- Cubi ruft nur explizit freigegebene veröffentlichte GitHub-Releases ab; private Repositories mit einem lokal gesicherten Read-only-Token, nie vom Kunden.
+- Neuer gefilterter Cubi-Katalog unter /v1/catalog.json mit Original-App-Icons und SHA-256-Paketen; atomarer Austausch des öffentlichen Paketsatzes.
+- HA Manager prüft den Cubi-Katalog alle zwei Minuten und zeigt freigegebene Apps, installierte Versionen und Updates als HA-Update-Entitäten.
+- Manuelle Installation/Updates nach Bestätigung, vorerst ohne PIN, mit gezielter Zielpfad-Prüfung, ZIP-Validierung, Backups und Dashboard-Ressourcenregistrierung.
+- Eigenständige Supervisor-Apps, Themes mit Hintergrundbildern und Windows-Werkzeuge brauchen vor Produktivfreigabe gesonderte Tests/Installer; nicht als vollständig umgesetzt ausweisen.
+- Keine automatische Installation, keine Veröffentlichung und kein produktiver LXC-Eingriff in diesem Zweig.
+
+
 ## Unreleased – Cubi global App allowlist (server-side preparation)
 
 - Add `cubi/package_policy.py` with validated, fail-closed global GitHub synchronization and publication allowlists. New/unknown repositories are denied.
