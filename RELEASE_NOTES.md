@@ -1,12 +1,30 @@
 # Release Notes
 
-## v0.1.0 – Smartify App Manager (initial source package)
+## v0.2.0 – Marketplace compatibility and automatic catalog synchronization
 Date: 2026-11-13
 
-**New:** A Home Assistant sidebar view for twelve Smartify projects with repository links. Admin users can set/change a PIN and maintain per-module locked/unlocked catalog labels. PINs are hashed before local persistence; changes require HA admin permissions.
+### New
+- A `hacs.json` file is now present in the repository root, allowing the HA 2026.11 Marketplace to validate the repository structure.
+- The Manager now discovers public Smartify repositories automatically and checks their latest published GitHub releases every six hours.
+- New repos and new release versions are shown without shipping a new App Manager version. The UI shows version tags and release-note links.
+- Manual recheck is available (no more often than once every ten minutes). Last valid data is retained if GitHub is unavailable.
 
-**Important:** No 30-day trial. The status labels do not disable Smartify modules. Installation and updates remain delegated to HA/HACS. Existing Smartify repositories are unmodified.
+### Scope and safety
+- **No 30-day test period.**
+- The PIN controls administrative catalog lock markers only. It does not block or uninstall integrations.
+- Updates, installations and removal remain in Home Assistant Marketplace; no arbitrary remote-code execution.
+- Remote GitHub tags do not establish a locally installed version.
+- The Manager itself still needs a new Marketplace version for its own code changes.
 
-**Compatibility:** Intended for contemporary HA versions with `panel_custom`, `websocket_api`, `Store` and UI config flows. Running-HA smoke test is still required. This source archive is not an official published GitHub release.
+### Upgrade from 0.1.0
+No storage migration. The existing PIN hash and module lock flags remain. The new catalog cache is populated automatically on the first successful GitHub synchronization. Home Assistant may require restart for the integration update.
 
-**Installation:** See README.md. Existing Smartify installations require no migration.
+### Testing
+Code and file-level validations are required; running-HA installation and reload smoke tests remain necessary before declaring this production-ready.
+
+---
+
+## v0.1.0 – Initial source
+Date: 2026-11-13
+
+Initial Smartify administrator catalog, PIN handling, 12 module links and project documentation. No trial or license enforcement.
