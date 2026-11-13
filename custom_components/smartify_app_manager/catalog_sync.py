@@ -97,7 +97,7 @@ async def async_sync_catalog(hass, state: dict, *, force: bool = False) -> bool:
         session = async_get_clientsession(hass)
 
         remote = await _request_json(
-            session, f"/users/{GITHUB_OWNER}/repos?per_page=100&type=public"
+            session, f"/users/{GITHUB_OWNER}/repos?per_page=100&type=owner"
         )
         if not isinstance(remote, list):
             state["sync_error"] = "GitHub nicht erreichbar; letzter Katalog bleibt erhalten."
@@ -142,6 +142,8 @@ def current_catalog(settings: dict) -> list[dict]:
     """Use cached remote metadata, with an always-available curated fallback."""
     known = catalog_entries([], settings.get("locks", {}))
     cached = settings.get("remote_catalog", [])
+    if not isinstance(cached, list):
+        cached = []
     merged = {item["repo"]: item for item in known}
     for item in cached:
         if not isinstance(item, dict):
