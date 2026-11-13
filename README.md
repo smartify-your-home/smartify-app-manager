@@ -9,7 +9,7 @@ Central, administrator-only Home Assistant panel for the Smartify extension fami
 - Refreshes the catalog automatically every **6 hours**, with a manual refresh button (limited to once every 10 minutes).
 - Caches the last successful catalog locally; GitHub outages do not remove the module list.
 - Opens the official GitHub repository and its release notes; installs and updates themselves are handled by the Home Assistant Marketplace / HACS.
-- HA administrator-only panel; PIN creation/change and PIN-protected per-module catalog lock labels.
+- HA administrator-only panel with a compact, single-column app list (name, status, published version and inline actions), PIN creation/change and PIN-protected per-module catalog lock labels.
 - Respects Home Assistant themes.
 - **No trial period, trial timer, commercial licensing, subscription or expiry.**
 
