@@ -62,6 +62,9 @@ class CubiPackagePolicyTests(unittest.TestCase):
             self.assertEqual(mod.unexpected_public_directories(self.sample, root), [])
             (root / 'internal-app.zip').write_bytes(b'test')
             self.assertEqual(mod.unexpected_public_directories(self.sample, root), ['internal-app.zip'])
+            (root / 'sep').rmdir()
+            (root / 'sep').symlink_to(root / 'internal-app.zip')
+            self.assertEqual(mod.unexpected_public_directories(self.sample, root), ['internal-app.zip', 'sep'])
 
     def test_cli_denies_unlisted_repositories(self):
         self.assertEqual(mod.main(['--policy', str(SAMPLE), 'check', 'sync', 'smartify-energy-pro']), 0)
