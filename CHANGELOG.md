@@ -11,6 +11,8 @@
 - Persistent cache of last successful GitHub data and offline fallback.
 - Explicit documentation of Marketplace compatibility, API rate limits and actual scope of PIN locks.
 
+- Compatibility adjustments for Home Assistant 2026.11 config flows and probatio WebSocket schemas.
+
 ### Unchanged
 - Each Smartify module remains independently installed and updated through HA Marketplace / HACS.
 - PINs are stored as salted PBKDF2 hashes and protected by HA administrator permissions.
