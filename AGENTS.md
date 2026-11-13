@@ -10,10 +10,10 @@
 ## Kubi SEP package source (0.3.0)
 - Read `kubi_source.py` and the `test_kubi_source.py` security tests before changing the package source.
 - HA administrator-only commands: `kubi_status`, `kubi_set_url` and `kubi_download`.
-- Only literal RFC1918 IPv4 HTTP LAN addresses; never follow redirects or allow arbitrary file paths from metadata.
+- Only literal RFC1918 IPv4 HTTP LAN addresses or the pinned `https://smartify-packages.tail8ff129.ts.net` endpoint on TCP 443. Reject arbitrary hostnames, other ports, redirects and user-supplied paths.
 - Validate release metadata, immutable artifact names, SHA-256, archive contents and embedded SEP manifest before writing to `/config/smartify-downloads/sep/`.
 - Download only; never auto-install, overwrite existing integrations or enable license enforcement. Keep GitHub catalog separate.
-- Temporary LAN transport has no authentication, TLS or package-origin signature; only use for local testing, not customers.
+- Temporary LAN HTTP is test-only. The pinned Tailscale HTTPS endpoint requires a shared-tailnet access grant, verified TLS and no publicly exposed port; release signatures and customer policy still need production hardening.
 
 ## Project and release rules
 - Product: Smartify App Manager; domain `smartify_app_manager`.
