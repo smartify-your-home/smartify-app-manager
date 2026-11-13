@@ -1,5 +1,14 @@
 # Release Notes
 
+## Unreleased development fix – Tailscale HTTPS endpoint
+
+- The 0.3.0 development build rejected all HTTPS URLs. The package-source validation now permits the exact private Tailscale Serve address `https://smartify-packages.tail8ff129.ts.net`, with the canonical HTTPS port 443.
+- LAN HTTP access via a literal RFC1918 IPv4 URL continues to work; arbitrary HTTPS hosts, extra paths and alternative ports remain blocked.
+- TLS hostname/certificate verification remains enabled, redirects stay disabled, existing download integrity and no-auto-install safeguards remain unchanged.
+- Still requires a live HA smoke test. No new published release and no automatic deployment to customers.
+
+---
+
 ## v0.3.0 – Kubi SEP package source (development candidate)
 Date: 2026-11-13
 
