@@ -61,7 +61,7 @@ def websocket_catalog(hass, connection, msg) -> None:
         return
     settings = state["settings"]
     connection.send_result(msg["id"], {
-        "apps": current_catalog(settings),
+        "apps": [] if settings.get("kubi_url") else current_catalog(settings),
         "pin_configured": bool(settings.get("pin_hash")),
         "trial_enabled": False,
         "last_synced": settings.get("last_synced"),
@@ -78,7 +78,7 @@ async def websocket_refresh(hass, connection, msg) -> None:
     if state is None:
         connection.send_error(msg["id"], "not_loaded", "Smartify Manager nicht geladen")
         return
-    updated = await async_sync_catalog(hass, state, force=True)
+    updated = False if state["settings"].get("kubi_url") else await async_sync_catalog(hass, state, force=True)
     connection.send_result(msg["id"], {
         "updated": updated,
         "last_synced": state["settings"].get("last_synced"),
@@ -333,6 +333,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     @callback
     def _scheduled_catalog_sync(_now):
+        if state["settings"].get("kubi_url"):
+            return
         hass.async_create_background_task(
             async_sync_catalog(hass, state), "Smartify catalog sync"
         )
@@ -344,9 +346,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_refresh()
     await catalog_coordinator.async_refresh()
     await hass.config_entries.async_forward_entry_setups(entry, ["update"])
-    hass.async_create_background_task(
-        async_sync_catalog(hass, state), "Smartify initial catalog sync"
-    )
+    if not state["settings"].get("kubi_url"):
+        hass.async_create_background_task(
+            async_sync_catalog(hass, state), "Smartify initial catalog sync"
+        )
     return True
 
 
