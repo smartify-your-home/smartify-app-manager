@@ -2,6 +2,9 @@
 
 ## Unreleased – Tailscale HTTPS test follow-up (based on 0.3.0)
 
+- Replace multi-column app tiles with a compact, full-width single-column list; each row shows name, category, published GitHub release version, lock status and direct actions.
+- Keep the row layout responsive on small/mobile screens and preserve Home Assistant light/dark themes and existing PIN lock behavior.
+
 - Allow the exact `https://smartify-packages.tail8ff129.ts.net` URL on port 443 in the Kubi package-source backend; existing RFC1918 HTTP tests remain available.
 - Keep the SSRF allowlist narrow: arbitrary hostnames, ports, redirects and paths are rejected.
 - Add security regression tests and update the HA panel guidance; no running SEP installation is modified.
