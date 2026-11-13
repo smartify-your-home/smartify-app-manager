@@ -8,6 +8,9 @@
 5. Never alter another Smartify repository without explicit instruction.
 
 ## Customer distribution architecture (required for new work)
+- Global Cubi GitHub allowlist is **default-deny** before **any** sync and before **any** customer publication. Read `cubi/README.md` and `cubi/package_policy.py`. No new public Smartify repo automatically becomes a Cubi package.
+- Two independent access layers: global `sync/publish` on Cubi, then customer-specific entitlement validated by Cubi; neither may be inferred from GitHub repo visibility or client-side state.
+- Revoking a published app must remove already-served files from Tailscale Serve's root, not merely skip the next GitHub sync. Avoid exposing disallowed packages, names, versions or icons in the customer catalog.
 - Read `docs/CUSTOMER_DISTRIBUTION.md` before changing app catalog, customer update detection, PIN handling, downloads or installation.
 - The Manager is the **customer-facing Cubi download, installation and update interface for all Smartify apps**; GitHub is the developer release source, not the customer installation workflow.
 - New customer installations require **server-side Cubi authorization with a customer installation PIN**. The current local administrator PIN and module lock flags are not installation authentication; never conflate them.
