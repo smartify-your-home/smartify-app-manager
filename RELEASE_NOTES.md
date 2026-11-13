@@ -9,6 +9,8 @@ Date: 2026-11-13
 - New repos and new release versions are shown without shipping a new App Manager version. The UI shows version tags and release-note links.
 - Manual recheck is available (no more often than once every ten minutes). Last valid data is retained if GitHub is unavailable.
 
+- Updated the config flow and PIN WebSocket validation to match Home Assistant 2026.11's current API.
+
 ### Scope and safety
 - **No 30-day test period.**
 - The PIN controls administrative catalog lock markers only. It does not block or uninstall integrations.
