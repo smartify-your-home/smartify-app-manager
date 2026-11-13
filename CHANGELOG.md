@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased – Cubi customer distribution architecture
+
+- Document multi-app Cubi package catalogue as the intended customer-facing source of downloads and updates; native Home Assistant update entities check every 120 seconds for supported apps.
+- Define a **distinct customer installation PIN** verified on Cubi; the pre-existing administrator PIN is not a package authorization system.
+- Explain that existing directly served SEP ZIPs are an unauthenticated test channel. The authenticated gateway, install action and per-app entitlements are **not yet implemented**.
+- Clarify temporary buttons: `App-Katalog aktualisieren` (GitHub migration source) versus `Jetzt auf Updates prüfen` (Cubi).
+
+
 ## Unreleased – Tailscale HTTPS test follow-up (based on 0.3.0)
 
 - Replace multi-column app tiles with a compact, full-width single-column list; each row shows name, category, published GitHub release version, lock status and direct actions.
