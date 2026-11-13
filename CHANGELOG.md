@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.4.0] – Private Cubi-Paketverteilung (Entwicklungskandidat, unveröffentlicht)
+## [0.4.0] – 2026-11-13 · Privater Cubi-Paketweg (Testrelease)
 
 - Cubi ruft nur explizit freigegebene veröffentlichte GitHub-Releases ab; private Repositories mit einem lokal gesicherten Read-only-Token, nie vom Kunden.
 - Neuer gefilterter Cubi-Katalog unter /v1/catalog.json mit Original-App-Icons und SHA-256-Paketen; atomarer Austausch des öffentlichen Paketsatzes.
