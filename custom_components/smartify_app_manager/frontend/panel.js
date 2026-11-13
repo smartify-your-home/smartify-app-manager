@@ -35,6 +35,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
     this._kubi = {configured:false,connected:false,url:''};
     this._downloadInfo = null;
     this._pollTimer = null;
+    this._cubiCatalog = {ready:false, apps:[], pending:false};
   }
   connectedCallback() {
     if (this._pollTimer !== null) return;
@@ -43,6 +44,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
       if (this._loaded && !this._busy
           && this.shadowRoot.activeElement?.id !== 'kubi-url') {
         this.checkKubi();
+        this.checkCubiCatalog();
       }
     }, 120000);
   }
@@ -67,7 +69,10 @@ class SmartifyAppManagerPanel extends HTMLElement {
       this._error = '';
     } catch (err) { this._error = String(err.message || err); }
     finally { this._busy = false; this.render(); }
-    if (this._loaded) await this.checkKubi();
+    if (this._loaded) {
+      await this.checkCubiCatalog();
+      await this.checkKubi();
+    }
   }
   async checkKubi() {
     if (!this._hass) return;
@@ -77,6 +82,68 @@ class SmartifyAppManagerPanel extends HTMLElement {
       this._kubi = {configured:true,connected:false,url:this._kubi.url || '',error:String(err.message||err)};
     }
     this.render();
+  }
+
+  async checkCubiCatalog() {
+    if (!this._hass) return;
+    try {
+      const data = await this._hass.callWS({type:'smartify_app_manager/cubi_apps'});
+      this._cubiCatalog = {
+        ready: !!(data.connected && data.configured && !data.catalog_pending),
+        pending: !!data.catalog_pending,
+        apps: Array.isArray(data.apps) ? data.apps : [],
+      };
+    } catch (err) {
+      this._cubiCatalog = {ready:false,pending:false,apps:[],error:String(err.message||err)};
+    }
+    this.render();
+  }
+  renderApps(apps, customerMode, escape, appIcon) {
+    return apps.map(app => {
+      let meta, actions;
+      if (customerMode) {
+        const installed = app.installed_version || 'Nicht installiert';
+        const status = app.update_available ? ' · Update verfügbar' : '';
+        meta = escape(app.kind)+' · Installiert: '+escape(installed)+' · Cubi: '+escape(app.version)+status;
+        if (app.install_supported) {
+          const action = app.installed_version ? 'Aktualisieren' : 'Installieren';
+          actions = '<button class="primary" data-install="'+escape(app.id)+'">'+action+'</button>';
+        } else {
+          actions = '<span class="notice">Installation über HA Apps erforderlich</span>';
+        }
+      } else {
+        meta = escape(app.category)+' · '+(app.latest_version?'GitHub: '+escape(app.latest_version)+' · ':'')
+            +(app.new?'Neu entdeckt · ':'')+(app.locked?'🔒 Gesperrt (Kennzeichen)':'Verfügbar');
+        actions = '<a class="button" href="'+escape(app.url)+'" target="_blank" rel="noopener noreferrer">Repository ↗</a>'
+            +(app.release_url?'<a class="button" href="'+escape(app.release_url)+'" target="_blank" rel="noopener noreferrer">Release Notes ↗</a>':'')
+            +'<button data-id="'+escape(app.id)+'" data-locked="'+(app.locked?'false':'true')+'">'+(app.locked?'Entsperren':'Sperren')+'</button>';
+      }
+      return '<article class="app-row" role="listitem"><span class="app-icon" aria-hidden="true">'
+          +appIcon(app)+'</span><div class="app-info"><div class="name">'+escape(app.name)
+          +'</div><div class="meta">'+meta+'</div></div><div class="app-actions">'
+          +actions+'</div></article>';
+    }).join('');
+  }
+  async installCubiApp(appId) {
+    const app = this._cubiCatalog.apps.find(item=>item.id===appId);
+    if (!app || !app.install_supported || this._busy) return;
+    const action = app.installed_version ? 'aktualisieren' : 'installieren';
+    if (!window.confirm(app.name+' auf Version '+app.version+' '+action+'? Vorhandene Dateien werden gesichert.')) return;
+    this._busy = true;
+    try {
+      const result = await this._hass.callWS({
+        type:'smartify_app_manager/cubi_install',app_id:appId
+      });
+      this._success = app.name+' '+result.version+' installiert.'
+        +(result.restart_required?' Home Assistant muss neu gestartet werden.':'');
+      this._error = '';
+      await this.checkCubiCatalog();
+    } catch (err) {
+      this._error = String(err.message||err);
+    } finally {
+      this._busy = false;
+      this.render();
+    }
   }
   kubiPanel(escape) {
     const k=this._kubi;
@@ -88,8 +155,8 @@ class SmartifyAppManagerPanel extends HTMLElement {
         ? '<span class="warn">● Nicht erreichbar</span> · '+escape(k.error||'Bitte Verbindung prüfen')
         : 'Noch keine Paketquelle eingerichtet';
     return [
-      '<section class="panel"><h2>Cubi-Paketserver · Smartify Energy Pro</h2>',
-      '<p class="notice">Lädt freigegebene SEP-Pakete nach Home Assistant. Lokaler LAN-Test per HTTP oder geschützter Zugriff per Tailscale HTTPS. Keine automatische Installation.</p>',
+      '<section class="panel"><h2>Cubi-Paketserver · Smartify Apps</h2>',
+      '<p class="notice">Cubi prüft freigegebene Apps alle zwei Minuten. Installation nur nach Bestätigung; im Testmodus ohne PIN.</p>',
       '<div class="pinrow"><input id="kubi-url" style="max-width:310px;min-width:220px;flex:1" aria-label="Cubi Paketserver URL" placeholder="https://smartify-packages.tail8ff129.ts.net" autocomplete="off" spellcheck="false" value="'+escape(k.url||'')+'">',
       '<button id="kubi-save">Server speichern</button><button id="kubi-check">Jetzt auf Updates prüfen</button></div>',
       '<div class="notice" style="margin-top:12px">'+status+'</div>',
@@ -146,7 +213,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
     this.shadowRoot.querySelector('#refresh').onclick=()=>this.manualRefresh();
     this.shadowRoot.querySelector('#setpin').onclick=()=>this.setPin();
     this.shadowRoot.querySelector('#kubi-save').onclick=()=>this.saveKubiUrl();
-    this.shadowRoot.querySelector('#kubi-check').onclick=()=>this.checkKubi();
+    this.shadowRoot.querySelector('#kubi-check').onclick=()=>{this.checkKubi();this.checkCubiCatalog();};
     const kubiDownload=this.shadowRoot.querySelector('#kubi-download');
     if(kubiDownload)kubiDownload.onclick=()=>this.downloadKubi();
     this.shadowRoot.querySelectorAll('.app-icon img').forEach(img => {
@@ -157,6 +224,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
       }, {once:true});
     });
     this.shadowRoot.querySelectorAll('button[data-id]').forEach(button=>button.onclick=()=>this.setLock(button.dataset.id,button.dataset.locked==='true'));
+    this.shadowRoot.querySelectorAll('button[data-install]').forEach(button=>button.onclick=()=>this.installCubiApp(button.dataset.install));
   }
   async manualRefresh() {
     try {
