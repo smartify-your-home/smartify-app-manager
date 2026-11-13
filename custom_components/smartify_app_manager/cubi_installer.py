@@ -78,7 +78,7 @@ def _install_verified_archive(
                 path = PurePosixPath(name)
                 if (name in names or path.is_absolute() or "\\" in name
                         or ".." in path.parts or item.is_dir()
-                        or ((item.external_attr >> 16) & stat.S_IFMT) == stat.S_IFLNK):
+                        or stat.S_IFMT(item.external_attr >> 16) == stat.S_IFLNK):
                     raise KubiError("Unsichere oder doppelte Paketpfade")
                 names.add(name)
                 if kind == "dashboard" and expected_dest.endswith(".js"):
@@ -124,6 +124,8 @@ def _install_verified_archive(
                 backup = None
                 if target.exists():
                     backups = config / "smartify-manager-backups" / app_id
+                    if backups.is_symlink() or backups.parent.is_symlink():
+                        raise KubiError("Unsicherer Backup-Pfad")
                     backups.mkdir(parents=True, exist_ok=True)
                     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
                     backup = backups / stamp
