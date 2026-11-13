@@ -1,4 +1,4 @@
-/** Smartify App Manager v0.1.0 – standalone, theme-aware Home Assistant panel. */
+/** Smartify App Manager v0.2.0 – standalone, theme-aware Home Assistant panel. */
 class SmartifyAppManagerPanel extends HTMLElement {
   constructor() {
     super();
@@ -9,6 +9,8 @@ class SmartifyAppManagerPanel extends HTMLElement {
     this._loaded = false;
     this._error = '';
     this._success = '';
+    this._lastSynced = null;
+    this._syncError = null;
   }
   set hass(value) {
     this._hass = value;
@@ -21,6 +23,8 @@ class SmartifyAppManagerPanel extends HTMLElement {
       const data = await this._hass.callWS({type: 'smartify_app_manager/catalog'});
       this._apps = data.apps;
       this._pinConfigured = data.pin_configured;
+      this._lastSynced = data.last_synced;
+      this._syncError = data.sync_error;
       this._loaded = true;
       this._error = '';
     } catch (err) { this._error = String(err.message || err); }
@@ -41,17 +45,29 @@ class SmartifyAppManagerPanel extends HTMLElement {
         input{background:var(--secondary-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color);padding:10px;border-radius:8px;max-width:230px}.tag{font-size:11px;border:1px solid var(--divider-color);border-radius:20px;padding:3px 8px;display:inline-block}.warn{color:var(--error-color)}.ok{color:var(--success-color,var(--primary-color))}.notice{font-size:13px;line-height:1.5}.pinrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px}
       </style>
       <main class="wrap">
-        <div class="head"><div><h1>Smartify App Manager</h1><p>Zentrale Übersicht deiner Smartify-Erweiterungen</p></div><span class="tag">v0.1.0 · ohne Testzeitraum</span></div>
-        <div class="controls"><span class="count">${this._apps.length} Module im Katalog</span><button id="refresh">Aktualisieren</button></div>
+        <div class="head"><div><h1>Smartify App Manager</h1><p>Zentrale Übersicht deiner Smartify-Erweiterungen</p></div><span class="tag">v0.2.0 · ohne Testzeitraum</span></div>
+        <div class="controls"><span class="count">${this._apps.length} Module im Katalog</span><button id="refresh">Mit GitHub abgleichen</button></div>
+        <p class="notice">Automatische Synchronisierung alle 6 Stunden · Letzter Abgleich: ${this._lastSynced?escape(new Date(this._lastSynced).toLocaleString('de-AT')):'noch keiner'} · manueller Abgleich frühestens alle 10 Minuten</p>
+        ${this._syncError?`<p class="warn" role="status">${escape(this._syncError)}</p>`:''}
         ${this._error?`<p class="warn" role="alert">${escape(this._error)}</p>`:''}${this._success?`<p class="ok" role="status">${escape(this._success)}</p>`:''}
         <section class="panel"><h2>Smartify Apps</h2><div class="notice">Installation und Updates erfolgen über Home Assistant / HACS. Hier kannst du das jeweilige Repository öffnen. „Sperren“ ist derzeit nur ein Verwaltungskennzeichen und <strong>deaktiviert keine laufende Integration</strong>.</div>
-          <div class="grid">${this._apps.map(app=>`<article class="app"><div class="apphead"><span class="logo">${({'energy-pro':'⚡','flow-card':'🔀','weather-card':'☁️','person-detection':'📷','floorplan3d':'🏠','sip-manager':'☎️','themes':'🎨','heating':'🌡️','raffstore':'🪟','tailnet-viewer':'🌐','tabbar':'📑','row-card':'▤'})[app.id]||'◼'}</span><div><div class="name">${escape(app.name)}</div><div class="meta">${escape(app.category)} · ${app.locked?'🔒 Gesperrt (Kennzeichen)':'Verfügbar'}</div></div></div><div class="buttons"><a class="button" href="${escape(app.url)}" target="_blank" rel="noopener noreferrer">Repository / Installation ↗</a><button data-id="${escape(app.id)}" data-locked="${app.locked?'false':'true'}">${app.locked?'Entsperren':'Sperren'}</button></div></article>`).join('')}</div>
+          <div class="grid">${this._apps.map(app=>`<article class="app"><div class="apphead"><span class="logo">${({'energy-pro':'⚡','flow-card':'🔀','weather-card':'☁️','person-detection':'📷','floorplan3d':'🏠','sip-manager':'☎️','themes':'🎨','heating':'🌡️','raffstore':'🪟','tailnet-viewer':'🌐','tabbar':'📑','row-card':'▤'})[app.id]||'◼'}</span><div><div class="name">${escape(app.name)}</div><div class="meta">${escape(app.category)} · ${app.latest_version?`GitHub: ${escape(app.latest_version)} · `:""}${app.new?"Neu entdeckt · ":""}${app.locked?'🔒 Gesperrt (Kennzeichen)':'Verfügbar'}</div></div></div><div class="buttons"><a class="button" href="${escape(app.url)}" target="_blank" rel="noopener noreferrer">Repository / Installation ↗</a>${app.release_url?`<a class="button" href="${escape(app.release_url)}" target="_blank" rel="noopener noreferrer">Release Notes ↗</a>`:""}<button data-id="${escape(app.id)}" data-locked="${app.locked?'false':'true'}">${app.locked?'Entsperren':'Sperren'}</button></div></article>`).join('')}</div>
         </section>
         <section class="panel"><h2>Administrator-PIN</h2><p class="notice">Mindestens 6 Zeichen. PIN schützt die Änderung der Modul-Kennzeichen. Die Anmeldung als HA-Administrator ist zusätzlich erforderlich.</p><div class="pinrow">${this._pinConfigured?'<input type="password" id="old" placeholder="Bisherige PIN" autocomplete="off">':''}<input type="password" id="new" placeholder="Neue PIN (mind. 6)" autocomplete="new-password"><button id="setpin">${this._pinConfigured?'PIN ändern':'PIN einrichten'}</button></div></section>
       </main>`;
-    this.shadowRoot.querySelector('#refresh').onclick=()=>this.refresh();
+    this.shadowRoot.querySelector('#refresh').onclick=()=>this.manualRefresh();
     this.shadowRoot.querySelector('#setpin').onclick=()=>this.setPin();
     this.shadowRoot.querySelectorAll('button[data-id]').forEach(button=>button.onclick=()=>this.setLock(button.dataset.id,button.dataset.locked==='true'));
+  }
+  async manualRefresh() {
+    try {
+      const result = await this._hass.callWS({type:'smartify_app_manager/refresh'});
+      this._success = result.updated ? 'GitHub-Katalog erfolgreich abgeglichen.' : 'Kein neuer Abgleich (10-Minuten-Sperre oder GitHub nicht erreichbar).';
+      this._error = '';
+    } catch(err) {
+      this._error = String(err.message || err);
+    }
+    await this.refresh();
   }
   async setPin(){
     const new_pin=this.shadowRoot.querySelector('#new').value;
