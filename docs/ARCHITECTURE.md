@@ -4,7 +4,8 @@
 - `const.py`: curated, stable module IDs, descriptions and GitHub repository names.
 - `catalog_sync.py`: async GitHub discovery via HA's shared aiohttp session, latest published release lookup, rate limiting, persisted cache, input filtering and fallback.
 - `__init__.py`: HA integration lifecycle, administrative PIN/PBKDF2 storage, WebSocket API and six-hour background scheduling.
-- `config_flow.py`: one instance per HA installation.
+- `config_flow.py`: one instance per HA installation, using HA 2026.11's empty config-flow form.
+- WebSocket commands use `probatio` schemas (not deprecated `voluptuous` marker declarations).
 - `frontend/panel.js`: theme-aware sidebar app catalog, version display, release links and PIN controls.
 
 ## Keeping other Smartify modules up to date
