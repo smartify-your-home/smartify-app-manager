@@ -140,6 +140,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         websocket_catalog, websocket_refresh, websocket_set_pin, websocket_set_lock
     ):
         websocket_api.async_register_command(hass, handler)
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(f"/{DOMAIN}_assets", str(Path(__file__).parent / "frontend"), False)
+    ])
     return True
 
 
@@ -159,9 +162,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     }
     hass.data[DOMAIN] = state
 
-    await hass.http.async_register_static_paths([
-        StaticPathConfig(f"/{DOMAIN}_assets", str(Path(__file__).parent / "frontend"), False)
-    ])
     await panel_custom.async_register_panel(
         hass,
         webcomponent_name="smartify-app-manager-panel",
