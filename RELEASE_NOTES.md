@@ -1,5 +1,16 @@
 # Release Notes
 
+## Unreleased architecture preparation – Cubi multi-app updates and installation PIN
+
+- The long-term Smartify Manager customer path is **Cubi only** for package downloads and updates, independent of the GitHub developer release workflow.
+- Every supported installed Smartify app will get its own native HA update entity, checked against a shared Cubi package catalog every two minutes. SEP is the first candidate, not proof that all apps are already supported.
+- New app installations must prompt for a **customer installation PIN** and be authorized server-side by Cubi. The existing administrator PIN is unrelated and must not be presented as authorization.
+- The authenticated Cubi gateway, PIN activation endpoint and installation action are **not yet operational**; current SEP HTTPS ZIP download remains a manual test flow.
+- Full architecture and bypass-prevention requirements documented under `docs/CUSTOMER_DISTRIBUTION.md`.
+
+---
+
+
 ## Unreleased development fixes – Tailscale HTTPS and compact app list
 
 - Replace the app tile grid with compact list rows. On wide screens actions stay on the same row; on mobile screens they move beneath the app details.
