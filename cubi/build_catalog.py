@@ -84,7 +84,7 @@ def _files_under_root(source_tree: Path, source: str, destination: str) -> list[
         if path.stat().st_size > MAX_ZIP_FILE:
             raise BuildError(f"File too big: {path}")
         relative = path.relative_to(base).as_posix()
-        dest = str(PurePosixPath(destination) / relative)
+        dest = destination if src.is_file() else str(PurePosixPath(destination) / relative)
         if ".." in PurePosixPath(dest).parts or dest.startswith("/"):
             raise BuildError("Unsafe destination")
         entries.append((path, dest))
