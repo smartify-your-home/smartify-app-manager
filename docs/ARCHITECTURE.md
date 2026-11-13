@@ -1,18 +1,31 @@
-# Architecture and security boundary
+# Smartify App Manager architecture
 
-- `const.py`: curated catalog of Smartify GitHub repositories.
+## Components
+- `const.py`: curated, stable module IDs, descriptions and GitHub repository names.
+- `catalog_sync.py`: async GitHub discovery via HA's shared aiohttp session, latest published release lookup, rate limiting, persisted cache, input filtering and fallback.
+- `__init__.py`: HA integration lifecycle, administrative PIN/PBKDF2 storage, WebSocket API and six-hour background scheduling.
 - `config_flow.py`: one instance per HA installation.
-- `__init__.py`: persistent HA Store, WebSocket catalog + PIN modification + module status flag, and admin-only custom panel.
-- `frontend/panel.js`: custom-element view using the Home Assistant `hass.callWS` connection; HA CSS variables for theming.
+- `frontend/panel.js`: theme-aware sidebar app catalog, version display, release links and PIN controls.
 
-## Trust boundary
-A customer with filesystem/administrator access to their Home Assistant instance controls all locally installed code. The PIN is a safeguard for administrator workflows, not commercial tamper resistance. The locked flag is **not enforced** in other Smartify integrations. A future opt-in enforcement interface must be designed with explicit compatibility contracts, idempotent disable/re-enable semantics, restore-state safeguards, customer data preservation and safety-critical local operation.
+## Keeping other Smartify modules up to date
+1. Home Assistant fetches the public GitHub user repo listing every six hours; only `smartify-*` repositories with owner `smartify-your-home` are eligible.
+2. The Manager excludes itself and merges new modules with a curated list; curated IDs remain stable, preserving PIN labels.
+3. For each module, GitHub's latest **published** release is fetched. A tag without a published release is not shown as a release version.
+4. The data is cached in Home Assistant `.storage`. On loss of Internet, the last known catalog remains visible.
+5. Module installations, updates and their actual installed versions are still managed by the official HA Marketplace. The Manager cannot infer that a module is installed from a release tag.
+6. New module discovery does not require a Manager commit. **Manager code changes still require a normal Manager release.**
+7. GitHub API access is unauthenticated and rate-limited. Normal sync runs every six hours; manual sync is throttled to a ten-minute minimum.
 
-## Data
-`hass.helpers.storage.Store` stores `pin_hash`, random `pin_salt`, and module `locks` under `.storage/smartify_app_manager.settings` (not a file users should edit). Plaintext PIN is never saved. A wrong-PIN attempt counter is held in memory and triggers a temporary lockout.
+No GitHub Actions schedules or external customer tokens are needed.
 
-## Future phases (not implemented)
-- Inspect actual HACS/HA installation versions and expose update status.
-- Optional per-module enable/disable API in cooperating modules.
-- Release information and changelog aggregation.
-- Optional signed licensing (only when explicitly commissioned).
+## Security boundary
+- Only HA administrators access the panel/WebSocket commands.
+- Administrative PINs are protected using PBKDF2-HMAC-SHA256 with a fresh random salt.
+- PINs are never stored in plaintext or included in remote requests; repeated failures incur a temporary cooldown.
+- The PIN lock is *metadata only*, not a commercial license or protection from filesystem administrators.
+- No trial counter, license server, expiring license or automatic runtime disable.
+- Only validated GitHub repository names under the pinned owner become links. GitHub results are treated as untrusted data.
+- Safety-critical automations and local controls are not modified.
+
+## Upgrade and storage
+Settings and remote catalog are persisted in `.storage/smartify_app_manager.settings` through HA Store. Existing v0.1.0 PIN and lock flags are retained. The Catalog survives temporary GitHub outages.
