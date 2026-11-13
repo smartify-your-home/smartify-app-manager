@@ -91,7 +91,7 @@ def unexpected_public_directories(policy: dict, release_root: str | Path) -> lis
     root = Path(release_root)
     if not root.is_dir():
         raise PolicyError(f'Public release directory does not exist: {root}')
-    return sorted(p.name for p in root.iterdir() if p.name not in allowed)
+    return sorted(p.name for p in root.iterdir() if p.name not in allowed or p.is_symlink())
 
 
 def main(argv: list[str] | None = None) -> int:
