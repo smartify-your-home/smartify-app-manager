@@ -3,7 +3,7 @@
 ## [0.2.0] - 2026-11-13
 
 ### Added
-- Root-level `hacs.json`, required for installation/update through the HA 2026.11 Marketplace.
+- Root-level minimal `hacs.json`, required for installation/update through the HA 2026.11 Marketplace.
 - Automatic six-hour discovery of public Smartify repositories on GitHub.
 - Newly created `smartify-*` projects join the catalog without updating the Manager source.
 - Published release versions and GitHub release-note links in the module cards.
