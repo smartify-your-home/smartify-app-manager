@@ -1,32 +1,49 @@
-# Smartify App Manager v0.1.0
+# Smartify App Manager v0.2.0
 
-Home Assistant custom integration that provides an **administrator-only Smartify catalog** with a sidebar panel and optional PIN-protected module status flags.
+Central, administrator-only Home Assistant panel for the Smartify extension family.
 
-## Included in v0.1.0
-- App catalog for 12 Smartify repositories; direct repository/installation links.
-- Separate repositories remain independently versioned, installed and updated through Home Assistant / HACS.
-- Home Assistant administrator-only panel and WebSocket API.
-- Set/change administrator PIN (PBKDF2-HMAC-SHA256 with per-installation random salt).
-- PIN-protected module status flag (`locked`/`unlocked`) persisted in HA storage.
-- Five incorrect PIN attempts trigger a five-minute cooldown (in-memory, reset on HA restart).
-- Responsive interface using HA theme variables.
-- **No 30-day trial or license expiry.**
+## Features
 
-## Scope limitations
-**Status flags are only administrative catalog labels.** They DO NOT disable a running integration, its automations, entities or cards. True enforcement would require explicit opt-in cooperation inside each Smartify module. This version does not provide silent installation, removal, or update execution. No claim of copyright/code protection is made.
+- Discovers public `smartify-*` repositories owned by `smartify-your-home`, excluding the Manager itself.
+- Shows all known Smartify modules, newly discovered modules and the **latest published GitHub release version** where available.
+- Refreshes the catalog automatically every **6 hours**, with a manual refresh button (limited to once every 10 minutes).
+- Caches the last successful catalog locally; GitHub outages do not remove the module list.
+- Opens the official GitHub repository and its release notes; installs and updates themselves are handled by the Home Assistant Marketplace / HACS.
+- HA administrator-only panel; PIN creation/change and PIN-protected per-module catalog lock labels.
+- Respects Home Assistant themes.
+- **No trial period, trial timer, commercial licensing, subscription or expiry.**
+
+## Important limitations
+
+- A PIN-locked module is **only marked locked in this catalog**. It is not disabled in Home Assistant or in the module itself. This is not license enforcement.
+- The GitHub version is the **latest published release**, not proof of what is installed locally. The Manager does not automatically install, disable, upgrade or uninstall integrations.
+- Brand-new repositories must be public, have a `smartify-` name and be owned by `smartify-your-home` to be auto-discovered. The Manager is excluded.
+- GitHub availability, API rate limits and connectivity can delay remote metadata updates. Current values are cached.
+- The Manager's own code must still be updated independently through the Marketplace when a new Manager release is published.
+
+## Installation through Home Assistant 2026.11 Marketplace
+
+1. Open **Settings → Marketplace**.
+2. Add the custom GitHub repository URL `https://github.com/smartify-your-home/smartify-app-manager` as an **Integration** if it does not already appear.
+3. Install the integration. The repository includes its root-level `hacs.json`.
+4. Go to **Settings → Devices & Services → Add Integration → Smartify App Manager** to configure the one-time setup, if needed.
+5. Open **Smartify** from the HA sidebar with an administrator account.
+
+For older Home Assistant versions, this repository targets HA **2026.11.0 or newer**, per `hacs.json`.
 
 ## Manual installation
-1. Copy `custom_components/smartify_app_manager/` into `<config>/custom_components/smartify_app_manager/`.
-2. Restart Home Assistant.
-3. Go to **Settings → Devices & Services → Add Integration**, search for `Smartify App Manager` and finish the empty setup flow.
-4. Open **Smartify** in the sidebar (Home Assistant administrator account).
-5. Open a repository link to add/install that integration via your chosen HA/HACS workflow.
 
-## Installation via HACS
-Publish this repository separately with `custom_components/smartify_app_manager` at its root; add it as a custom integration repository in HACS if not listed.
+Copy `custom_components/smartify_app_manager/` into the same path under your HA configuration, restart Home Assistant, and add the integration through Settings → Devices & Services.
 
-## Development & tests
-Run `python -m compileall -q custom_components`, `python -m unittest discover -s tests -v`, and `node --check .../panel.js`. Final HA smoke test is necessary before production use.
+## Developer validation
 
-## Release documentation
-See `AGENTS.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `docs/ARCHITECTURE.md`.
+- `python -m compileall -q custom_components`
+- `python -m unittest discover -s tests -v`
+- `python -m json.tool hacs.json`
+- `python -m json.tool custom_components/smartify_app_manager/manifest.json`
+- `node --check custom_components/smartify_app_manager/frontend/panel.js`
+- Test integration setup, panel loading, PIN flow, sync and unload/reload in a running HA environment.
+
+## Files and standards
+
+See `AGENTS.md`, `CHANGELOG.md`, `RELEASE_NOTES.md` and `docs/ARCHITECTURE.md`. The Manager does **not** alter code in other Smartify repositories.
