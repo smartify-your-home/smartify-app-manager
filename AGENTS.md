@@ -11,7 +11,8 @@
 - Product: Smartify App Manager; domain `smartify_app_manager`.
 - Use SemVer `MAJOR.MINOR.PATCH`; UI, manifest, docs and GitHub release/tag must agree.
 - Every user-visible change updates `CHANGELOG.md` and `RELEASE_NOTES.md`, including installation/upgrade notes.
-- Keep an actual root-level `hacs.json` in every Marketplace-installable version. The integration remains under `custom_components/smartify_app_manager`.
+- Keep an actual root-level `hacs.json` in every Marketplace-installable version; specify minimum supported Home Assistant version.
+- Use HA 2026.11-compatible `probatio` WebSocket schema markers and test command registration. The integration remains under `custom_components/smartify_app_manager`.
 - All changes must preserve HA light/dark themes, mobile usability and accessible control labels.
 - No new GH Actions scheduled tests that bombard users with failure emails; prefer small reliable validations.
 - Do not claim a GitHub release exists until verified.
