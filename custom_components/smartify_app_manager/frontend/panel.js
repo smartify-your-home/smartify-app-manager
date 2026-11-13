@@ -167,7 +167,16 @@ class SmartifyAppManagerPanel extends HTMLElement {
     ].join('');
   }
   render() {
+    const customerMode = this._cubiCatalog.ready;
+    const displayApps = customerMode ? this._cubiCatalog.apps : this._apps;
     const appIcon = app => {
+      if (customerMode) {
+        const fallback = SMARTIFY_FALLBACK_ICONS[app.id] || 'mdi:apps';
+        const local = app.local_icon_url;
+        return local
+          ? `<img src="${local}" alt="" loading="lazy" decoding="async"><ha-icon icon="${fallback}" hidden></ha-icon>`
+          : `<ha-icon icon="${fallback}"></ha-icon>`;
+      }
       const path = SMARTIFY_ORIGINAL_ICONS[app.id];
       const fallback = SMARTIFY_FALLBACK_ICONS[app.id] || 'mdi:apps';
       const original = path
@@ -200,12 +209,12 @@ class SmartifyAppManagerPanel extends HTMLElement {
       </style>
       <main class="wrap">
         <div class="head"><div><h1>Smartify App Manager</h1><p>Zentrale Übersicht deiner Smartify-Erweiterungen</p></div><span class="tag">v0.3.0 · ohne Testzeitraum</span></div>
-        <div class="controls"><span class="count">${this._apps.length} Module im Katalog</span><button id="refresh">App-Katalog aktualisieren</button></div>
-        <p class="notice">Automatische Synchronisierung alle 6 Stunden · Letzter Abgleich: ${this._lastSynced?escape(new Date(this._lastSynced).toLocaleString('de-AT')):'noch keiner'} · manueller Abgleich frühestens alle 10 Minuten</p>
+        <div class="controls"><span class="count">${displayApps.length} Apps im Katalog</span><button id="refresh">App-Katalog aktualisieren</button></div>
+        <p class="notice">${customerMode ? 'Cubi-Updateprüfung alle zwei Minuten, auch bei geschlossenem Panel.' : 'Übergangskatalog über GitHub, automatischer Abgleich alle sechs Stunden.'}</p>
         ${this._syncError?`<p class="warn" role="status">${escape(this._syncError)}</p>`:''}
         ${this._error?`<p class="warn" role="alert">${escape(this._error)}</p>`:''}${this._success?`<p class="ok" role="status">${escape(this._success)}</p>`:''}
-        <section class="panel"><h2>Smartify Apps</h2><div class="notice">Installation und Updates erfolgen über Home Assistant / HACS. Hier kannst du das jeweilige Repository öffnen. „Sperren“ ist derzeit nur ein Verwaltungskennzeichen und <strong>deaktiviert keine laufende Integration</strong>.</div>
-          <div class="apps-list" role="list">${this._apps.map(app=>`<article class="app-row" role="listitem"><span class="app-icon" aria-hidden="true">${appIcon(app)}</span><div class="app-info"><div class="name">${escape(app.name)}</div><div class="meta">${escape(app.category)} · ${app.latest_version?`GitHub: ${escape(app.latest_version)} · `:""}${app.new?"Neu entdeckt · ":""}${app.locked?'🔒 Gesperrt (Kennzeichen)':'Verfügbar'}</div></div><div class="app-actions"><a class="button" href="${escape(app.url)}" target="_blank" rel="noopener noreferrer" aria-label="Repository für ${escape(app.name)} öffnen">Repository ↗</a>${app.release_url?`<a class="button" href="${escape(app.release_url)}" target="_blank" rel="noopener noreferrer">Release Notes ↗</a>`:""}<button data-id="${escape(app.id)}" data-locked="${app.locked?'false':'true'}">${app.locked?'Entsperren':'Sperren'}</button></div></article>`).join('')}</div>
+        <section class="panel"><h2>Smartify Apps</h2><div class="notice">${customerMode ? 'Installationen und Updates erfolgen über Cubi. Es werden ausschließlich freigegebene Pakete angezeigt.' : 'GitHub-Übergangskatalog. Die Kundenansicht wird nach Freigabe des Cubi-Katalogs aktiv.'}</div>
+          <div class="apps-list" role="list">${this.renderApps(displayApps, customerMode, escape, appIcon)}</div>
         </section>
         ${this.kubiPanel(escape)}
         <section class="panel"><h2>Administrator-PIN</h2><p class="notice">Mindestens 6 Zeichen. PIN schützt die Änderung der Modul-Kennzeichen. Die Anmeldung als HA-Administrator ist zusätzlich erforderlich.</p><div class="pinrow">${this._pinConfigured?'<input type="password" id="old" placeholder="Bisherige PIN" autocomplete="off">':''}<input type="password" id="new" placeholder="Neue PIN (mind. 6)" autocomplete="new-password"><button id="setpin">${this._pinConfigured?'PIN ändern':'PIN einrichten'}</button></div></section>
@@ -227,6 +236,16 @@ class SmartifyAppManagerPanel extends HTMLElement {
     this.shadowRoot.querySelectorAll('button[data-install]').forEach(button=>button.onclick=()=>this.installCubiApp(button.dataset.install));
   }
   async manualRefresh() {
+    if (this._cubiCatalog.ready) {
+      try {
+        await this._hass.callWS({type:'smartify_app_manager/cubi_refresh'});
+        await this.checkCubiCatalog();
+        this._success='Cubi-App-Katalog aktualisiert.';
+        this._error='';
+      } catch (err) { this._error=String(err.message||err); }
+      this.render();
+      return;
+    }
     try {
       const result = await this._hass.callWS({type:'smartify_app_manager/refresh'});
       this._success = result.updated ? 'App-Katalog aktualisiert (derzeit GitHub-Übergangsquelle).' : 'Kein neuer Katalogabgleich (10-Minuten-Sperre oder GitHub nicht erreichbar).';
