@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "default": "deny",
+  "github_owner": "smartify-your-home",
+  "apps": {
+    "smartify-energy-pro": {
+      "sync": true,
+      "publish": true,
+      "release_dir": "sep"
+    }
+  }
+}
