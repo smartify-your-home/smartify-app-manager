@@ -1,5 +1,16 @@
 # Release Notes
 
+## Unreleased – Cubi global synchronization permissions
+
+- Not every Smartify GitHub repository is a customer app. Cubi now has a **default-deny sync/publication policy module**, currently in development only.
+- A newly created GitHub repository is not synchronized unless explicitly allowed. Publication must be approved separately from synchronization. SEP is the only example approved entry.
+- Existing public archives must be taken out of the served directory when a publication grant is revoked; this is not handled by the currently running server scripts.
+- Customer-specific app entitlements and PIN checks remain a separate, future authorization layer.
+- Source/tests/documentation have been prepared; **the live Cubi LXC has not been reconfigured** and no release has been published.
+
+---
+
+
 ## Unreleased architecture preparation – Cubi multi-app updates and installation PIN
 
 - The long-term Smartify Manager customer path is **Cubi only** for package downloads and updates, independent of the GitHub developer release workflow.
