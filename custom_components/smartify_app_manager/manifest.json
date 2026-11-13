@@ -1,11 +1,16 @@
 {
   "domain": "smartify_app_manager",
   "name": "Smartify App Manager",
-  "version": "0.1.0",
-  "documentation": "https://github.com/smartify-your-home",
-  "issue_tracker": "https://github.com/smartify-your-home",
+  "version": "0.2.0",
+  "documentation": "https://github.com/smartify-your-home/smartify-app-manager#readme",
+  "issue_tracker": "https://github.com/smartify-your-home/smartify-app-manager/issues",
   "config_flow": true,
-  "dependencies": ["frontend", "http", "panel_custom", "websocket_api"],
+  "dependencies": [
+    "frontend",
+    "http",
+    "panel_custom",
+    "websocket_api"
+  ],
   "codeowners": [],
   "iot_class": "local_push"
 }
