@@ -1,5 +1,8 @@
 # Smartify App Manager architecture
 
+> Target for customer deployment: [Cubi multi-app package distribution and PIN-gated installations](CUSTOMER_DISTRIBUTION.md). The current GitHub-synced catalog is a temporary development feed. The current Cubi ZIP endpoint is unauthenticated and **does not** enable PIN-secured installs. Every installed supported Smartify app should eventually have a native HA update entity, checked at two-minute intervals using Cubi's unified catalog.
+
+
 ## Components
 - `const.py`: curated, stable module IDs, descriptions and GitHub repository names.
 - `catalog_sync.py`: async GitHub discovery via HA's shared aiohttp session, latest published release lookup, rate limiting, persisted cache, input filtering and fallback.
