@@ -327,7 +327,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         frontend_url_path=PANEL_PATH,
         sidebar_title="Smartify",
         sidebar_icon="mdi:apps",
-        module_url=f"/{DOMAIN}_assets/panel.js?v=0.3.0",
+        module_url=f"/{DOMAIN}_assets/panel.js?v=0.4.0",
         require_admin=True,
     )
 
