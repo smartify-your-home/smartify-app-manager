@@ -75,13 +75,8 @@ class CubiSEPUpdateEntity(CoordinatorEntity[CubiSEPUpdateCoordinator], UpdateEnt
 
     @property
     def release_url(self) -> str | None:
-        version = self.latest_version
-        if version is None:
-            return None
-        return (
-            "https://github.com/smartify-your-home/"
-            f"smartify-energy-pro/releases/tag/{version}"
-        )
+        # Customers need no direct private GitHub access.
+        return None
 
     @property
     def release_summary(self) -> str | None:
@@ -94,8 +89,11 @@ class CubiSEPUpdateEntity(CoordinatorEntity[CubiSEPUpdateCoordinator], UpdateEnt
         )
 
     @property
-    def entity_picture(self) -> str:
-        return SEP_ICON
+    def entity_picture(self) -> str | None:
+        catalog = self.hass.data.get(DOMAIN, {}).get("cubi_catalog_coordinator")
+        apps = (catalog.data or {}).get("apps", []) if catalog else []
+        app = next((item for item in apps if item["id"] == "energy-pro"), None)
+        return app.get("local_icon_url") if app else None
 
     def version_is_newer(self, latest_version: str, installed_version: str) -> bool:
         """Avoid a false notification when Cubi has an older package."""
