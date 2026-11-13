@@ -1,6 +1,6 @@
 # Smartify App Manager – Kunden-Paketverwaltung über Cubi
 
-Status: verbindliche Zielarchitektur, noch **nicht vollständig implementiert**. Der laufende SEP-Testweg lädt nur ZIPs; er installiert nicht und schützt den Download noch nicht mit einem PIN.
+Status: Entwicklungsarchitektur. Der neue Cubi-Testzweig unterstützt freigegebene HA-Integrationen/Dashboard-Dateien ohne PIN nach Bestätigung, ist aber noch nicht auf Cubi/HA ausgerollt oder im Betrieb geprüft. Supervisor-Apps benötigen einen gesonderten Installationsweg.
 
 ## Freigabe vor jedem GitHub-Abruf (Default Deny)
 
@@ -26,10 +26,10 @@ Die neue Policy-Prüfbibliothek liegt derzeit **nur im Entwicklungszweig**; die 
 1. Cubi bietet einen **einzigen, versionierten App-Katalog**, z. B. `GET /v1/catalog`. Eintrag: stabile App-ID, Titel, Original-Icon, Typ (HA-Integration, Lovelace-Ressource, Themes usw.), veröffentlichte Version, unterstützte HA-Version, Release-Hinweise, signierter Artefaktverweis und ggf. Freischaltungsstatus.
 2. Der Manager vergleicht diesen Katalog alle 120 Sekunden mit den **tatsächlich installierten lokalen Versionen**. Keine Updates aus GitHub-Commitständen oder ZIP-Dateinamen erraten. Unbekannte installierte Version -> keine automatische Update-Freigabe.
 3. Pro unterstützter installierter App gibt es eine **native HA-Update-Entität** mit `installed_version` und `latest_version`; bei noch nicht installierten Apps zeigt der Manager eine Installationsoption. Der Manager meldet Updates, führt sie nicht automatisch aus.
-4. Beim Klick auf **Installieren** wird der **Kunden-Installations-PIN** abgefragt. Dieser PIN ist **nicht** der bisherige Administrator-PIN, der nur Katalog-Sperrkennzeichen schützt. Cubi validiert PIN + Kundenidentität + App-Berechtigung serverseitig; eine rein lokale UI-PIN-Abfrage ist ausdrücklich unzulässig.
-5. Cubi stellt erst nach erfolgreicher Prüfung ein **kurzlebiges, app-/versions-/kundenbezogenes Downloadrecht** aus. Übertragungsweg ist Tailscale Serve HTTPS. Manager verifiziert zusätzlich die kryptografische Paket-Signatur und das erwartete Manifest.
+4. Beim Klick auf **Installieren** ist vorerst **kein optionalen Kunden-PIN** erforderlich; der HA-Administrator bestätigt ausdrücklich. Ein später optionaler PIN müsste serverseitig auf Cubi geprüft werden. Dieser PIN ist **nicht** der bisherige Administrator-PIN, der nur Katalog-Sperrkennzeichen schützt. Für die aktuelle Testphase begrenzen Tailscale und die globale Cubi-Freigabeliste den Zugang. Kundenbezogene Berechtigungen und ein möglicher späterer PIN sind nicht aktiv.
+5. Im aktuellen Modus stellt Cubi freigegebene Pakete ohne einzelne Download-Tokens innerhalb des berechtigten Tailnets bereit. Für spätere Kundenberechtigungen wären kurzlebige app-/versions-/kundenbezogene Rechte nötig. Übertragungsweg ist Tailscale Serve HTTPS. Manager verifiziert zusätzlich die kryptografische Paket-Signatur und das erwartete Manifest.
 6. Der Kunde bestätigt die Installation. Je nach App-Typ wird die korrekte HA-Installationsstrategie gewählt; Backup/Rollback und ggf. notwendiger HA-Neustart werden deutlich angekündigt. Niemals stillschweigend laufende Integrationen überschreiben.
-7. Für Updates dieselben Versions-/Integritäts-/Kompatibilitätsprüfungen. Ob ein PIN bei **jedem** Update oder nur bei der ersten Freischaltung erforderlich ist, wird als explizite Produktregel umgesetzt und dokumentiert; bis dahin keine implizite Berechtigung.
+7. Für Updates dieselben Versions-/Integritäts-/Kompatibilitätsprüfungen. Vorerst gibt es bei Updates keinen PIN, aber stets eine explizite Bestätigung und Paketprüfung.
 
 ## Sicherheit und technische Sperren
 - Der derzeitige statische `tailscale serve --https ... /srv/smartify/releases` bietet **keine PIN-Grenze**. Solange die ZIPs direkt über eine freigegebene URL heruntergeladen werden können, darf die Oberfläche **keinen PIN-geschützten Download behaupten**.
