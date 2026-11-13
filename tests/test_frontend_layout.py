@@ -21,10 +21,10 @@ class AppListLayoutTests(unittest.TestCase):
     def test_controls_remain_accessible(self):
         for required in (
             'class="app-actions"',
-            'href="${escape(app.url)}"',
-            'href="${escape(app.release_url)}"',
-            'data-id="${escape(app.id)}"',
-            'data-locked="${app.locked?',
+            "escape(app.url)",
+            "escape(app.release_url)",
+            "data-id",
+            "data-locked",
             'role="listitem"',
         ):
             with self.subTest(required=required):

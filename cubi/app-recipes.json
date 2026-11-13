@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "apps": {
+    "smartify-energy-pro": {
+      "id": "energy-pro",
+      "name": "Smartify Energy Pro",
+      "kind": "integration",
+      "source": "custom_components/smartify_energy",
+      "destination": "custom_components/smartify_energy",
+      "icon": "custom_components/smartify_energy/brand/icon.png"
+    },
+    "smartify-flow-card": {
+      "id": "flow-card",
+      "name": "Smartify Flow Card",
+      "kind": "integration",
+      "source": "custom_components/smartify_flow_card",
+      "destination": "custom_components/smartify_flow_card",
+      "icon": "custom_components/smartify_flow_card/brand/icon.png"
+    },
+    "smartify-floorplan3D": {
+      "id": "floorplan3d",
+      "name": "Smartify Floorplan 3D",
+      "kind": "integration",
+      "source": "custom_components/smartify_floorplan3d",
+      "destination": "custom_components/smartify_floorplan3d",
+      "icon": null
+    },
+    "smartify-heating": {
+      "id": "heating",
+      "name": "Smartify Heating",
+      "kind": "integration",
+      "source": "custom_components/smartify_heating",
+      "destination": "custom_components/smartify_heating",
+      "icon": "custom_components/smartify_heating/brand/icon.png"
+    },
+    "smartify-row-card": {
+      "id": "row-card",
+      "name": "Smartify Energy Row Card",
+      "kind": "integration",
+      "source": "custom_components/smartify_energy_row_card",
+      "destination": "custom_components/smartify_energy_row_card",
+      "icon": null
+    },
+    "smartify-weather-card": {
+      "id": "weather-card",
+      "name": "Smartify Weather Card",
+      "kind": "dashboard",
+      "source": "dist/smartify-weather-chart.js",
+      "destination": "www/smartify/weather-card/smartify-weather-chart.js",
+      "icon": "images/icon.png"
+    },
+    "smartify-raffstore": {
+      "id": "raffstore",
+      "name": "Smartify Raffstore",
+      "kind": "dashboard",
+      "source": "src",
+      "destination": "www/smartify/raffstore",
+      "icon": "images/icon.png"
+    },
+    "smartify-tabbar": {
+      "id": "tabbar",
+      "name": "Smartify Tabbar & Header",
+      "kind": "dashboard",
+      "source": "src",
+      "destination": "www/smartify/tabbar",
+      "icon": "images/icon.png"
+    },
+    "smartify-themes": {
+      "id": "themes",
+      "name": "Smartify Themes",
+      "kind": "theme",
+      "source": "themes",
+      "destination": "themes/smartify",
+      "icon": null
+    },
+    "smartify-person-detection": {
+      "id": "person-detection",
+      "name": "Smartify Person Detection",
+      "kind": "supervisor",
+      "source": "smartify_person_detection",
+      "destination": null,
+      "icon": "images/icon.png"
+    },
+    "smartify-sip-manager": {
+      "id": "sip-manager",
+      "name": "Smartify SIP Manager",
+      "kind": "supervisor",
+      "source": "smartify_sip_manager",
+      "destination": null,
+      "icon": "images/icon.png"
+    },
+    "smartify-tailnet-viewer": {
+      "id": "tailnet-viewer",
+      "name": "Smartify Tailnet Viewer",
+      "kind": "external",
+      "source": null,
+      "destination": null,
+      "icon": "images/icon.png"
+    }
+  }
+}

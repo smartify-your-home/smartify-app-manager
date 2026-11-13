@@ -1,0 +1,11 @@
+[Unit]
+Description=Poll approved private Smartify releases and publish Cubi catalog every 2 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+AccuracySec=10s
+Unit=smartify-cubi-catalog-refresh.service
+
+[Install]
+WantedBy=timers.target

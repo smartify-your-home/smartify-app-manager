@@ -58,8 +58,9 @@ class SEPUpdatePollingTests(unittest.TestCase):
         self.assertIn("update_interval=UPDATE_INTERVAL", sep)
         self.assertIn("class CubiSEPUpdateEntity(", entity)
         self.assertIn("UpdateEntity):", entity)
-        self.assertIn("_attr_supported_features = 0", entity)
-        self.assertNotIn("async_install", entity)
+        self.assertIn("_attr_supported_features = UpdateEntityFeature.INSTALL", entity)
+        self.assertIn("async_install", entity)
+        self.assertIn("class CubiAppUpdateEntity(", entity)
         self.assertIn('async_forward_entry_setups(entry, ["update"])', init)
         self.assertIn('async_unload_platforms(entry, ["update"])', init)
 

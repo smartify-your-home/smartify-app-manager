@@ -1,5 +1,17 @@
 # Release Notes
 
+## v0.4.0 – Private GitHub-Releases über Cubi (Testkandidat)
+
+- Du kannst Apps in privaten GitHub-Repositories entwickeln. Nur Cubi erhält ein eingeschränktes GitHub-Lesetoken; Kunden benötigen weder GitHub-Konto noch Token.
+- Cubi synchronisiert ausschließlich global freigegebene veröffentlichte Releases und erstellt einen gemeinsamen Katalog mit Paket-Hashes und Original-Icons. Ein systemd-Testtimer ist für zwei Minuten vorbereitet.
+- Der Manager kann den Cubi-Katalog alle zwei Minuten prüfen, freigegebene App-Pakete anzeigen und installierte Versionen über offizielle HA-Update-Entitäten melden.
+- Installation und Update erfolgen erst nach ausdrücklicher Bestätigung, aktuell **ohne PIN**, mit Paketprüfung und Backups. Keine automatische Übernahme während der Prüfung.
+- Direkte Installation für HA-Integrationen und Dashboard-Dateien ist ein Entwicklungskandidat; Supervisor-Apps, Theme-Hintergründe und Altinstallationen brauchen Betriebs-/Migrationstests.
+- Kein Release veröffentlicht, kein Kunden-HA aktualisiert und keine Änderung am laufenden Cubi LXC.
+
+---
+
+
 ## Unreleased – Cubi global synchronization permissions
 
 - Not every Smartify GitHub repository is a customer app. Cubi now has a **default-deny sync/publication policy module**, currently in development only.

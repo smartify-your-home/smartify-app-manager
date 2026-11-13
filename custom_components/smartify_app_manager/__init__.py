@@ -21,6 +21,8 @@ from .catalog_sync import async_sync_catalog, current_catalog
 from .const import DOMAIN, PANEL_PATH, STORAGE_KEY, STORAGE_VERSION
 from .kubi_source import KubiError, download_release, fetch_latest, validate_server_url
 from .sep_update import CubiSEPUpdateCoordinator, is_newer_release, read_installed_sep_version, SEP_MANIFEST
+from .cubi_catalog import CubiCatalogCoordinator
+from .cubi_installer import install_cubi_app
 
 
 def _hash_pin(pin: str, salt: bytes) -> str:
@@ -59,7 +61,7 @@ def websocket_catalog(hass, connection, msg) -> None:
         return
     settings = state["settings"]
     connection.send_result(msg["id"], {
-        "apps": current_catalog(settings),
+        "apps": [] if settings.get("kubi_url") else current_catalog(settings),
         "pin_configured": bool(settings.get("pin_hash")),
         "trial_enabled": False,
         "last_synced": settings.get("last_synced"),
@@ -76,7 +78,7 @@ async def websocket_refresh(hass, connection, msg) -> None:
     if state is None:
         connection.send_error(msg["id"], "not_loaded", "Smartify Manager nicht geladen")
         return
-    updated = await async_sync_catalog(hass, state, force=True)
+    updated = False if state["settings"].get("kubi_url") else await async_sync_catalog(hass, state, force=True)
     connection.send_result(msg["id"], {
         "updated": updated,
         "last_synced": state["settings"].get("last_synced"),
@@ -191,6 +193,7 @@ async def websocket_kubi_set_url(hass, connection, msg) -> None:
     await state["store"].async_save(state["settings"])
     # Refresh the native update entity immediately after changing the server.
     await state["sep_update_coordinator"].async_request_refresh()
+    await state["cubi_catalog_coordinator"].async_request_refresh()
     connection.send_result(msg["id"], {"success": True, "url": url})
 
 
@@ -216,11 +219,78 @@ async def websocket_kubi_download(hass, connection, msg) -> None:
             connection.send_error(msg["id"], "kubi_download_failed", str(err))
 
 
+@websocket_api.require_admin
+@websocket_api.websocket_command({probatio.Required("type"): f"{DOMAIN}/cubi_apps"})
+@websocket_api.async_response
+async def websocket_cubi_apps(hass, connection, msg) -> None:
+    """List only the globally approved apps supplied by Cubi, never GitHub."""
+    state = hass.data.get(DOMAIN)
+    if state is None:
+        connection.send_error(msg["id"], "not_loaded", "Smartify Manager nicht geladen")
+        return
+    coordinator = state["cubi_catalog_coordinator"]
+    data = coordinator.data or {"configured": False, "apps": []}
+    connection.send_result(msg["id"], {
+        **data, "connected": coordinator.last_update_success,
+        "server_url": state["settings"].get("kubi_url", ""),
+    })
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({probatio.Required("type"): f"{DOMAIN}/cubi_refresh"})
+@websocket_api.async_response
+async def websocket_cubi_refresh(hass, connection, msg) -> None:
+    """Manual refresh independent from the automatic 120-second polling."""
+    state = hass.data.get(DOMAIN)
+    if state is None:
+        connection.send_error(msg["id"], "not_loaded", "Smartify Manager nicht geladen")
+        return
+    coordinator = state["cubi_catalog_coordinator"]
+    await coordinator.async_request_refresh()
+    connection.send_result(msg["id"], {
+        **(coordinator.data or {"configured": False, "apps": []}),
+        "connected": coordinator.last_update_success,
+    })
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({
+    probatio.Required("type"): f"{DOMAIN}/cubi_install",
+    probatio.Required("app_id"): str,
+})
+@websocket_api.async_response
+async def websocket_cubi_install(hass, connection, msg) -> None:
+    """Explicit admin-triggered install. No PIN in the current test mode."""
+    state = hass.data.get(DOMAIN)
+    if state is None:
+        connection.send_error(msg["id"], "not_loaded", "Smartify Manager nicht geladen")
+        return
+    catalog = state["cubi_catalog_coordinator"]
+    app = next((a for a in (catalog.data or {}).get("apps", [])
+                if a["id"] == msg["app_id"]), None)
+    if app is None or not app.get("install_supported"):
+        connection.send_error(msg["id"], "not_allowed", "App auf Cubi nicht für Installation freigegeben")
+        return
+    async with state["cubi_install_lock"]:
+        try:
+            result = await install_cubi_app(
+                hass, state["settings"]["kubi_url"], app
+            )
+            state["settings"].setdefault("cubi_managed_versions", {})[app["id"]] = app["version"]
+            await state["store"].async_save(state["settings"])
+            await catalog.async_request_refresh()
+        except (KubiError, OSError, ValueError) as err:
+            connection.send_error(msg["id"], "install_failed", str(err))
+            return
+        connection.send_result(msg["id"], result)
+
+
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Register WebSocket handlers once, so reloading the entry is safe."""
     for handler in (
         websocket_catalog, websocket_refresh, websocket_set_pin, websocket_set_lock,
         websocket_kubi_status, websocket_kubi_set_url, websocket_kubi_download,
+        websocket_cubi_apps, websocket_cubi_refresh, websocket_cubi_install,
     ):
         websocket_api.async_register_command(hass, handler)
     await hass.http.async_register_static_paths([
@@ -242,10 +312,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "sync_attempt": 0.0,
         "sync_lock": asyncio.Lock(),
         "kubi_download_lock": asyncio.Lock(),
+        "cubi_install_lock": asyncio.Lock(),
         "sync_error": None,
     }
     coordinator = CubiSEPUpdateCoordinator(hass, entry, settings)
+    catalog_coordinator = CubiCatalogCoordinator(hass, entry, settings)
     state["sep_update_coordinator"] = coordinator
+    state["cubi_catalog_coordinator"] = catalog_coordinator
     hass.data[DOMAIN] = state
 
     await panel_custom.async_register_panel(
@@ -254,12 +327,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         frontend_url_path=PANEL_PATH,
         sidebar_title="Smartify",
         sidebar_icon="mdi:apps",
-        module_url=f"/{DOMAIN}_assets/panel.js?v=0.3.0",
+        module_url=f"/{DOMAIN}_assets/panel.js?v=0.4.0",
         require_admin=True,
     )
 
     @callback
     def _scheduled_catalog_sync(_now):
+        if state["settings"].get("kubi_url"):
+            return
         hass.async_create_background_task(
             async_sync_catalog(hass, state), "Smartify catalog sync"
         )
@@ -269,10 +344,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     # A temporary Cubi outage should not prevent the Manager from starting.
     await coordinator.async_refresh()
+    await catalog_coordinator.async_refresh()
     await hass.config_entries.async_forward_entry_setups(entry, ["update"])
-    hass.async_create_background_task(
-        async_sync_catalog(hass, state), "Smartify initial catalog sync"
-    )
+    if not state["settings"].get("kubi_url"):
+        hass.async_create_background_task(
+            async_sync_catalog(hass, state), "Smartify initial catalog sync"
+        )
     return True
 
 
