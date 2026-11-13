@@ -4,7 +4,7 @@
 Date: 2026-11-13
 
 ### New
-- A `hacs.json` file is now present in the repository root, allowing the HA 2026.11 Marketplace to validate the repository structure.
+- A minimal `hacs.json` file is now present in the repository root, allowing the HA 2026.11 Marketplace to validate the repository structure.
 - The Manager now discovers public Smartify repositories automatically and checks their latest published GitHub releases every six hours.
 - New repos and new release versions are shown without shipping a new App Manager version. The UI shows version tags and release-note links.
 - Manual recheck is available (no more often than once every ten minutes). Last valid data is retained if GitHub is unavailable.
