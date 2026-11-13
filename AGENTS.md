@@ -7,6 +7,15 @@
 4. Check HA API and Marketplace compatibility before modifying setup, WebSocket or panel registration.
 5. Never alter another Smartify repository without explicit instruction.
 
+## Customer distribution architecture (required for new work)
+- Read `docs/CUSTOMER_DISTRIBUTION.md` before changing app catalog, customer update detection, PIN handling, downloads or installation.
+- The Manager is the **customer-facing Cubi download, installation and update interface for all Smartify apps**; GitHub is the developer release source, not the customer installation workflow.
+- New customer installations require **server-side Cubi authorization with a customer installation PIN**. The current local administrator PIN and module lock flags are not installation authentication; never conflate them.
+- No PIN-only frontend gate: direct access to the current static Tailscale Serve package files bypasses such a gate. Implement an authenticated Cubi gateway before claiming install authorization works.
+- Do not auto-install code or introduce unauthenticated automatic updates. Maintain SEP HTTPS test connectivity and current storage compatibility during migration.
+- Poll the Cubi catalog for supported apps every 120 seconds using native HA update entities; compare against actually installed local versions, not GitHub release badges or previously downloaded ZIPs.
+- Original app icons should eventually be served from Cubi package metadata; raw GitHub icon URLs remain a transitional presentation detail.
+
 ## Kubi SEP package source (0.3.0)
 - Read `kubi_source.py` and the `test_kubi_source.py` security tests before changing the package source.
 - HA administrator-only commands: `kubi_status`, `kubi_set_url` and `kubi_download`.
