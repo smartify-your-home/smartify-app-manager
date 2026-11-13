@@ -20,6 +20,7 @@ from homeassistant.helpers.storage import Store
 from .catalog_sync import async_sync_catalog, current_catalog
 from .const import DOMAIN, PANEL_PATH, STORAGE_KEY, STORAGE_VERSION
 from .kubi_source import KubiError, download_release, fetch_latest, validate_server_url
+from .sep_update import CubiSEPUpdateCoordinator, is_newer_release, read_installed_sep_version, SEP_MANIFEST
 
 
 def _hash_pin(pin: str, salt: bytes) -> str:
@@ -155,8 +156,13 @@ async def websocket_kubi_status(hass, connection, msg) -> None:
         return
     try:
         meta = await fetch_latest(hass, url)
+        installed_version = await hass.async_add_executor_job(
+            read_installed_sep_version, hass.config.path(*SEP_MANIFEST)
+        )
         connection.send_result(msg["id"], {
             "configured": True, "connected": True, "url": url, **meta,
+            "installed_version": installed_version,
+            "update_available": is_newer_release(installed_version, meta["version"]),
         })
     except (KubiError, OSError) as err:
         connection.send_result(msg["id"], {
@@ -171,7 +177,7 @@ async def websocket_kubi_status(hass, connection, msg) -> None:
 })
 @websocket_api.async_response
 async def websocket_kubi_set_url(hass, connection, msg) -> None:
-    """Save a LAN-only IPv4 package source; empty disables it."""
+    """Save a constrained Cubi LAN or Tailscale package source."""
     state = hass.data.get(DOMAIN)
     if state is None:
         connection.send_error(msg["id"], "not_loaded", "Smartify Manager nicht geladen")
@@ -183,6 +189,8 @@ async def websocket_kubi_set_url(hass, connection, msg) -> None:
         return
     state["settings"]["kubi_url"] = url
     await state["store"].async_save(state["settings"])
+    # Refresh the native update entity immediately after changing the server.
+    await state["sep_update_coordinator"].async_request_refresh()
     connection.send_result(msg["id"], {"success": True, "url": url})
 
 
@@ -236,6 +244,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "kubi_download_lock": asyncio.Lock(),
         "sync_error": None,
     }
+    coordinator = CubiSEPUpdateCoordinator(hass, entry, settings)
+    state["sep_update_coordinator"] = coordinator
     hass.data[DOMAIN] = state
 
     await panel_custom.async_register_panel(
@@ -257,6 +267,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(
         async_track_time_interval(hass, _scheduled_catalog_sync, timedelta(hours=6))
     )
+    # A temporary Cubi outage should not prevent the Manager from starting.
+    await coordinator.async_refresh()
+    await hass.config_entries.async_forward_entry_setups(entry, ["update"])
     hass.async_create_background_task(
         async_sync_catalog(hass, state), "Smartify initial catalog sync"
     )
@@ -264,7 +277,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Remove the panel and cancel the periodic callback on reload."""
+    """Remove the update platform, panel and periodic listeners on reload."""
+    if not await hass.config_entries.async_unload_platforms(entry, ["update"]):
+        return False
     entry.async_unload()
     frontend.async_remove_panel(hass, PANEL_PATH)
     hass.data.pop(DOMAIN, None)
