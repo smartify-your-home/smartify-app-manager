@@ -236,7 +236,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
     this.shadowRoot.querySelectorAll('button[data-install]').forEach(button=>button.onclick=()=>this.installCubiApp(button.dataset.install));
   }
   async manualRefresh() {
-    if (this._cubiCatalog.ready) {
+    if (this._cubiCatalog.ready || this._kubi.configured) {
       try {
         await this._hass.callWS({type:'smartify_app_manager/cubi_refresh'});
         await this.checkCubiCatalog();
