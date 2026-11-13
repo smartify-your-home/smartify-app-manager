@@ -54,11 +54,25 @@ class KubiSourceTests(unittest.TestCase):
             "http://192.168.2.122:8765",
         )
         self.assertEqual(mod.validate_server_url(""), "")
+        self.assertEqual(
+            mod.validate_server_url(" https://smartify-packages.tail8ff129.ts.net/ "),
+            "https://smartify-packages.tail8ff129.ts.net",
+        )
+        self.assertEqual(
+            mod.validate_server_url("https://smartify-packages.tail8ff129.ts.net:443"),
+            "https://smartify-packages.tail8ff129.ts.net",
+        )
         for bad in (
             "http://127.0.0.1", "http://1.1.1.1:8765",
             "http://192.168.2.122:8765/a", "http://192.168.2.122:8765/?a=1",
             "http://localhost:8765", "http://user:pass@192.168.2.122",
             "file:///etc/passwd", "https://192.168.2.122",
+            "https://100.81.101.76",
+            "https://github.com", "https://evil.example",
+            "http://smartify-packages.tail8ff129.ts.net",
+            "https://smartify-packages.tail8ff129.ts.net:444",
+            "https://smartify-packages.tail8ff129.ts.net/sep/latest.json",
+            "https://user@smartify-packages.tail8ff129.ts.net",
         ):
             with self.subTest(bad=bad), self.assertRaises(mod.KubiError):
                 mod.validate_server_url(bad)
