@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0] - 2026-11-13 (candidate; not yet released)
+
+### Added
+- Configurable LAN Kubi SEP package endpoint in the admin-only HA panel.
+- Back-end metadata check using `/sep/latest.json` and version/status display, independent of GitHub sync.
+- Verified SEP ZIP download to `/config/smartify-downloads/sep/` after SHA-256 and ZIP/manifest validation.
+- Source URL restrictions, immutable package retention and dedicated security regression tests.
+
+### Unchanged
+- No automatic SEP installation, runtime change, remote license enforcement or public package hosting.
+- Existing Smartify GitHub catalog, module PIN labels and settings are retained.
+
+
 ## [0.2.0] - 2026-11-13
 
 ### Added
