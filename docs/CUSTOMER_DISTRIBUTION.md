@@ -2,6 +2,20 @@
 
 Status: verbindliche Zielarchitektur, noch **nicht vollständig implementiert**. Der laufende SEP-Testweg lädt nur ZIPs; er installiert nicht und schützt den Download noch nicht mit einem PIN.
 
+## Freigabe vor jedem GitHub-Abruf (Default Deny)
+
+**Nicht jedes Smartify-Repository ist eine Kunden-App.** Cubi führt eine globale, root-verwaltete Freigabeliste unter `/etc/smartify/package-policy.json` (Format und Prüfprogramm unter [cubi/README.md](../cubi/README.md)). Die Abfrage eines GitHub-Releases allein autorisiert keine Synchronisierung.
+
+- `sync=false`: Cubi darf das Repository nicht von GitHub abrufen.
+- `sync=true, publish=false`: Cubi darf die App nur intern synchronisieren; sie darf nie im öffentlich erreichbaren Release-Verzeichnis oder Kundenkatalog landen.
+- `sync=true, publish=true`: App ist **global** für Kunden vorgesehen, aber noch nicht jedem Kunden individuell freigegeben.
+- Nicht aufgeführte Repositories, fehlende oder fehlerhafte Freigabelisten = **sperren**.
+- Eine bereits publizierte, nachträglich gesperrte App muss sofort aus dem erreichbaren Veröffentlichungsverzeichnis entfernt werden; das bloße Abschalten der Synchronisierung reicht nicht.
+- Der spätere **kundenbezogene** Berechtigungsfilter ist unabhängig davon: Kunde A kann App X freigeschaltet bekommen, Kunde B nicht. Die PIN-Prüfung erfolgt serverseitig auf Cubi.
+- Der Manager darf seinen **produktiven Kundenkatalog nicht direkt aus allen öffentlichen GitHub-Repositories** erzeugen. Er erhält ausschließlich von Cubi freigegebene, nach Kundenrechten gefilterte Einträge.
+
+Die neue Policy-Prüfbibliothek liegt derzeit **nur im Entwicklungszweig**; die laufenden Cubi-Dienste werden dadurch nicht geändert.
+
 ## Ziel und Zuständigkeiten
 - **GitHub:** interne Entwicklung, validierte veröffentlichte Releases; kein direkter Kunden-Installationsweg.
 - **Cubi (LXC 230):** zentrale Quelle aller freigegebenen Smartify-App-Pakete, Katalog, Kunden-/App-Berechtigungen, serverseitige PIN-Prüfung, signierte Pakete und Audit ohne PINs im Log.
