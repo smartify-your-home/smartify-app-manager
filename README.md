@@ -29,7 +29,7 @@ Central, administrator-only Home Assistant panel for the Smartify extension fami
 4. Go to **Settings → Devices & Services → Add Integration → Smartify App Manager** to configure the one-time setup, if needed.
 5. Open **Smartify** from the HA sidebar with an administrator account.
 
-For older Home Assistant versions, this repository targets HA **2026.11.0 or newer**, per `hacs.json`.
+The built-in Marketplace is available from Home Assistant **2026.11**; earlier installations can use HACS where supported. A minimum HA version has not been declared in `hacs.json` pending runtime compatibility testing.
 
 ## Manual installation
 
