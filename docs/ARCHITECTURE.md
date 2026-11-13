@@ -1,5 +1,8 @@
 # Smartify App Manager architecture
 
+> **Global Cubi package source restrictions:** Server-side package synchronization is controlled by an explicit allowlist (see [`cubi/README.md`](../cubi/README.md)). Default is deny; `sync=true` and `publish=true` are separate. Customer-specific authorization follows after global publication. The current development-time public GitHub catalog is not suitable as the customer catalog and must be replaced by Cubi's permission-filtered response.
+
+
 > Target for customer deployment: [Cubi multi-app package distribution and PIN-gated installations](CUSTOMER_DISTRIBUTION.md). The current GitHub-synced catalog is a temporary development feed. The current Cubi ZIP endpoint is unauthenticated and **does not** enable PIN-secured installs. Every installed supported Smartify app should eventually have a native HA update entity, checked at two-minute intervals using Cubi's unified catalog.
 
 
