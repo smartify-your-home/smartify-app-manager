@@ -1,8 +1,8 @@
-# Smartify App Manager v0.3.0
+# Smartify App Manager v0.4.0 (development candidate)
 
 > **Cubi package allowlist:** New Smartify GitHub repositories are never automatically synchronized or offered to customers. Cubi has a separate global sync/publication policy with **default deny**, plus future per-customer entitlements. The allowlist reference implementation and example are under [`cubi/`](cubi/README.md); it is **not yet enabled on the running Cubi services**. The existing client GitHub catalog must be replaced with the Cubi-filtered catalog before customer production.
 
-> **Customer distribution roadmap:** Smartify Manager is the future customer-facing download/install/update interface for **all** Smartify apps, with Cubi (LXC 230) as the sole package source. New app installations require a **server-side Cubi-validated customer PIN**. The existing administrator PIN only protects catalog labels; it is not install authorization. See [Customer Distribution](docs/CUSTOMER_DISTRIBUTION.md). A protected package gateway and all-app Cubi catalog are not live yet. Existing SEP ZIP downloads remain test-only and do not install software.
+> **Customer distribution roadmap:** Smartify Manager is the future customer-facing download/install/update interface for **all** Smartify apps, with Cubi (LXC 230) as the sole package source. For the current test phase, installations require an administrator confirmation but **no PIN**. A server-validated customer PIN is only a possible later option. The existing administrator PIN only protects legacy catalog lock labels and is not used for Cubi package installs. See [Customer Distribution](docs/CUSTOMER_DISTRIBUTION.md). The new Cubi multi-app catalog, private release sync and optional install workflow are implemented in this development branch but are not yet deployed or HA-runtime-tested. Existing SEP ZIP downloads remain test-only and do not install software.
 
 
 Central, administrator-only Home Assistant panel for the Smartify extension family.
