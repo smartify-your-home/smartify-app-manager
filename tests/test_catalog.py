@@ -15,7 +15,7 @@ class CatalogTests(unittest.TestCase):
     def test_marketplace_manifest(self):
         d=json.loads((ROOT/'hacs.json').read_text())
         self.assertEqual(d['name'], 'Smartify App Manager')
-        self.assertIn('homeassistant', d)
+        self.assertNotIn('content_in_root', d)
         self.assertTrue((MODULE/'manifest.json').exists())
 
     def test_sync_uses_interval_and_owner_filter(self):
