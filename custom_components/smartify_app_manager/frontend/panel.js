@@ -19,7 +19,7 @@ const SMARTIFY_FALLBACK_ICONS = Object.freeze({
   'tailnet-viewer':'mdi:lan', 'tabbar':'mdi:tab',
   'row-card':'mdi:table-row',
 });
-/** Smartify App Manager v0.3.0 – standalone, theme-aware Home Assistant panel. */
+/** Smartify App Manager v0.4.0 – standalone, theme-aware Home Assistant panel. */
 class SmartifyAppManagerPanel extends HTMLElement {
   constructor() {
     super();
@@ -208,7 +208,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
         input{background:var(--secondary-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color);padding:10px;border-radius:8px;max-width:230px}.tag{font-size:11px;border:1px solid var(--divider-color);border-radius:20px;padding:3px 8px;display:inline-block}.warn{color:var(--error-color)}.ok{color:var(--success-color,var(--primary-color))}.notice{font-size:13px;line-height:1.5}.pinrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px}
       </style>
       <main class="wrap">
-        <div class="head"><div><h1>Smartify App Manager</h1><p>Zentrale Übersicht deiner Smartify-Erweiterungen</p></div><span class="tag">v0.3.0 · ohne Testzeitraum</span></div>
+        <div class="head"><div><h1>Smartify App Manager</h1><p>Zentrale Übersicht deiner Smartify-Erweiterungen</p></div><span class="tag">v0.4.0 · Testversion</span></div>
         <div class="controls"><span class="count">${displayApps.length} Apps im Katalog</span><button id="refresh">App-Katalog aktualisieren</button></div>
         <p class="notice">${customerMode ? 'Cubi-Updateprüfung alle zwei Minuten, auch bei geschlossenem Panel.' : 'Übergangskatalog über GitHub, automatischer Abgleich alle sechs Stunden.'}</p>
         ${this._syncError?`<p class="warn" role="status">${escape(this._syncError)}</p>`:''}
