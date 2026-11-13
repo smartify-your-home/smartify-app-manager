@@ -213,6 +213,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
         <p class="notice">${customerMode ? 'Cubi-Updateprüfung alle zwei Minuten, auch bei geschlossenem Panel.' : 'Übergangskatalog über GitHub, automatischer Abgleich alle sechs Stunden.'}</p>
         ${this._syncError?`<p class="warn" role="status">${escape(this._syncError)}</p>`:''}
         ${this._error?`<p class="warn" role="alert">${escape(this._error)}</p>`:''}${this._success?`<p class="ok" role="status">${escape(this._success)}</p>`:''}
+        ${!customerMode && this._kubi.configured ? '<p class="notice warn" role="status">Der neue Cubi-App-Katalog (/v1/catalog.json) ist noch nicht erreichbar. Die bestehende SEP-Paketquelle kann weiter genutzt werden.</p>' : ''}
         <section class="panel"><h2>Smartify Apps</h2><div class="notice">${customerMode ? 'Installationen und Updates erfolgen über Cubi. Es werden ausschließlich freigegebene Pakete angezeigt.' : 'GitHub-Übergangskatalog. Die Kundenansicht wird nach Freigabe des Cubi-Katalogs aktiv.'}</div>
           <div class="apps-list" role="list">${this.renderApps(displayApps, customerMode, escape, appIcon)}</div>
         </section>
