@@ -19,6 +19,7 @@ from homeassistant.helpers.storage import Store
 
 from .catalog_sync import async_sync_catalog, current_catalog
 from .const import DOMAIN, PANEL_PATH, STORAGE_KEY, STORAGE_VERSION
+from .kubi_source import KubiError, download_release, fetch_latest, validate_server_url
 
 
 def _hash_pin(pin: str, salt: bytes) -> str:
@@ -137,10 +138,81 @@ async def websocket_set_lock(hass, connection, msg) -> None:
     connection.send_result(msg["id"], {"success": True})
 
 
+@websocket_api.require_admin
+@websocket_api.websocket_command({probatio.Required("type"): f"{DOMAIN}/kubi_status"})
+@websocket_api.async_response
+async def websocket_kubi_status(hass, connection, msg) -> None:
+    """Fetch the local Kubi metadata via HA, never from the browser."""
+    state = hass.data.get(DOMAIN)
+    if state is None:
+        connection.send_error(msg["id"], "not_loaded", "Smartify Manager nicht geladen")
+        return
+    url = state["settings"].get("kubi_url", "")
+    if not url:
+        connection.send_result(msg["id"], {
+            "configured": False, "connected": False, "url": "",
+        })
+        return
+    try:
+        meta = await fetch_latest(hass, url)
+        connection.send_result(msg["id"], {
+            "configured": True, "connected": True, "url": url, **meta,
+        })
+    except (KubiError, OSError) as err:
+        connection.send_result(msg["id"], {
+            "configured": True, "connected": False, "url": url, "error": str(err),
+        })
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({
+    probatio.Required("type"): f"{DOMAIN}/kubi_set_url",
+    probatio.Required("url"): str,
+})
+@websocket_api.async_response
+async def websocket_kubi_set_url(hass, connection, msg) -> None:
+    """Save a LAN-only IPv4 package source; empty disables it."""
+    state = hass.data.get(DOMAIN)
+    if state is None:
+        connection.send_error(msg["id"], "not_loaded", "Smartify Manager nicht geladen")
+        return
+    try:
+        url = validate_server_url(msg["url"])
+    except KubiError as err:
+        connection.send_error(msg["id"], "invalid_server_url", str(err))
+        return
+    state["settings"]["kubi_url"] = url
+    await state["store"].async_save(state["settings"])
+    connection.send_result(msg["id"], {"success": True, "url": url})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({probatio.Required("type"): f"{DOMAIN}/kubi_download"})
+@websocket_api.async_response
+async def websocket_kubi_download(hass, connection, msg) -> None:
+    """Save only a validated SEP ZIP to /config; never install it automatically."""
+    state = hass.data.get(DOMAIN)
+    if state is None:
+        connection.send_error(msg["id"], "not_loaded", "Smartify Manager nicht geladen")
+        return
+    url = state["settings"].get("kubi_url", "")
+    if not url:
+        connection.send_error(msg["id"], "not_configured", "Bitte Kubi-Adresse speichern")
+        return
+    async with state["kubi_download_lock"]:
+        try:
+            meta = await fetch_latest(hass, url)
+            result = await download_release(hass, url, meta)
+            connection.send_result(msg["id"], result)
+        except (KubiError, OSError) as err:
+            connection.send_error(msg["id"], "kubi_download_failed", str(err))
+
+
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Register WebSocket handlers once, so reloading the entry is safe."""
     for handler in (
-        websocket_catalog, websocket_refresh, websocket_set_pin, websocket_set_lock
+        websocket_catalog, websocket_refresh, websocket_set_pin, websocket_set_lock,
+        websocket_kubi_status, websocket_kubi_set_url, websocket_kubi_download,
     ):
         websocket_api.async_register_command(hass, handler)
     await hass.http.async_register_static_paths([
@@ -161,6 +233,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "blocked_until": 0.0,
         "sync_attempt": 0.0,
         "sync_lock": asyncio.Lock(),
+        "kubi_download_lock": asyncio.Lock(),
         "sync_error": None,
     }
     hass.data[DOMAIN] = state
@@ -171,7 +244,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         frontend_url_path=PANEL_PATH,
         sidebar_title="Smartify",
         sidebar_icon="mdi:apps",
-        module_url=f"/{DOMAIN}_assets/panel.js?v=0.2.0",
+        module_url=f"/{DOMAIN}_assets/panel.js?v=0.3.0",
         require_admin=True,
     )
 
