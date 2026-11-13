@@ -51,8 +51,8 @@ class SmartifyAppManagerPanel extends HTMLElement {
         : 'Noch keine Paketquelle eingerichtet';
     return [
       '<section class="panel"><h2>Kubi-Paketserver · Smartify Energy Pro</h2>',
-      '<p class="notice">Lädt freigegebene SEP-Pakete nach Home Assistant. Keine automatische Installation. Nur für lokale LAN-Tests ohne Anmeldung oder Verschlüsselung.</p>',
-      '<div class="pinrow"><input id="kubi-url" style="max-width:310px;min-width:220px;flex:1" aria-label="Kubi Paketserver URL" placeholder="http://192.168.2.122:8765" autocomplete="off" spellcheck="false" value="'+escape(k.url||'')+'">',
+      '<p class="notice">Lädt freigegebene SEP-Pakete nach Home Assistant. Keine automatische Installation. Lokaler LAN-Test per HTTP oder geschützter Zugriff per Tailscale HTTPS. Keine automatische Installation.</p>',
+      '<div class="pinrow"><input id="kubi-url" style="max-width:310px;min-width:220px;flex:1" aria-label="Kubi Paketserver URL" placeholder="https://smartify-packages.tail8ff129.ts.net" autocomplete="off" spellcheck="false" value="'+escape(k.url||'')+'">',
       '<button id="kubi-save">Server speichern</button><button id="kubi-check">Verbindung prüfen</button></div>',
       '<div class="notice" style="margin-top:12px">'+status+'</div>',
       k.connected?'<div class="buttons" style="margin-top:12px"><button id="kubi-download" class="primary">Geprüftes ZIP nach Home Assistant laden</button></div><p class="notice">Ziel: /config/smartify-downloads/sep/ · Installierte SEP-Version unverändert.</p>':'',
