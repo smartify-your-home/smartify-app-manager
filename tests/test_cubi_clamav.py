@@ -1,6 +1,8 @@
 """Offline regression tests for mandatory ClamAV gate before Cubi /v1 publish."""
 from pathlib import Path
 import json
+import os
+import time
 import subprocess
 import sys
 import tempfile
@@ -64,7 +66,7 @@ class CubiClamavGateTests(unittest.TestCase):
     def test_scan_covers_source_and_zip_before_publication(self):
         def fake(command, **kwargs):
             self.assertEqual(command[0], "/usr/bin/clamscan")
-            self.assertIn("--recursive=yes", command)
+            self.assertIn("--recursive", command)
             self.assertIn("--scan-archive=yes", command)
             self.assertIn("--fail-if-cvd-older-than=7", command)
             self.assertIn("--alert-exceeds-max=yes", command)
@@ -82,6 +84,56 @@ class CubiClamavGateTests(unittest.TestCase):
         result = self.scan(fake)
         self.assertEqual(result["scanned_files"], 7)
         self.assert_report("CLEAN")
+
+    def test_clean_cache_skips_unchanged_packages_and_rechecks_changes(self):
+        database = self.reports.parent / "db"
+        database.mkdir(parents=True)
+        (database / "daily.cvd").write_bytes(b"test definitions")
+        scanner_file = self.reports.parent / "clamscan"
+        scanner_file.write_text("#!/bin/sh\\n")
+        invocations = []
+
+        def runner(command, **kwargs):
+            invocations.append(command)
+            return SimpleNamespace(
+                returncode=0, stdout="Scanned files: 7\\nInfected files: 0\\n",
+            )
+
+        def scan_cached():
+            return scan_staging.scan_staging(
+                self.stage, self.checkouts, self.policy, self.recipes,
+                self.reports, scanner=str(scanner_file), runner=runner,
+                cache_enabled=True, signatures_dir=database,
+            )
+
+        first = scan_cached()
+        self.assertEqual(first["status"], "CLEAN")
+        self.assertEqual(len(invocations), 1)
+        second = scan_cached()
+        self.assertTrue(second["cached"])
+        self.assertEqual(len(invocations), 1)
+        source_file = (self.checkouts / "smartify-energy-pro" / "src"
+                       / "custom_components" / "smartify_energy" / "__init__.py")
+        source_file.write_text("# changed source")
+        third = scan_cached()
+        self.assertEqual(third["status"], "CLEAN")
+        self.assertEqual(len(invocations), 2)
+        # New signatures require a new scan even when ZIP/source are the same.
+        (database / "daily.cvd").write_bytes(b"new definitions")
+        fourth = scan_cached()
+        self.assertEqual(len(invocations), 3)
+
+    def test_signature_database_missing_or_stale_blocks_cached_result(self):
+        database = self.reports.parent / "db"
+        database.mkdir(parents=True)
+        with self.assertRaisesRegex(scan_staging.ScanRejected, "signature"):
+            scan_staging._signature_fingerprint(database)
+        old = database / "daily.cvd"
+        old.write_text("stale signatures")
+        age = time.time() - 9 * 86400
+        os.utime(old, (age, age))
+        with self.assertRaisesRegex(scan_staging.ScanRejected, "older than"):
+            scan_staging._signature_fingerprint(database)
 
     def test_infected_archive_denied(self):
         def virus(command, **kwargs):
