@@ -19,6 +19,12 @@
 - Poll the Cubi catalog for supported apps every 120 seconds using native HA update entities; compare against actually installed local versions, not GitHub release badges or previously downloaded ZIPs.
 - Original app icons should eventually be served from Cubi package metadata; raw GitHub icon URLs remain a transitional presentation detail.
 
+## Cubi package antivirus gate (mandatory)
+- Every Cubi /v1 publication MUST run clamscan on the approved GitHub release source trees and staged ZIPs/icons before publish_staging.py.
+- Fail closed on malware, missing scanner, stale signatures (>7 days), scan errors, timeouts and incomplete scan results. Do not skip for unchanged packages without a validated package-hash AND signature-version cache.
+- Keep scan reports private outside /srv/smartify/releases; never weaken the default-deny global publication policy or change the existing /sep service.
+- The LXC implementation needs explicit deployment; a GitHub commit does not install code into Cubi.
+
 ## Kubi SEP package source (0.3.0)
 - Read `kubi_source.py` and the `test_kubi_source.py` security tests before changing the package source.
 - HA administrator-only commands: `kubi_status`, `kubi_set_url` and `kubi_download`.
