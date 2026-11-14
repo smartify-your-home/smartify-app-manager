@@ -15,8 +15,19 @@ Die derzeit freigegebenen Apps (SEP, Raffstore) bleiben in der bestehenden Polic
 pct exec 230 -- bash -s <<'CUBI'
 set -euo pipefail
 
+# ClamAV installieren (ClamAV-Daemon ist für clamscan NICHT nötig).
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y clamav clamav-freshclam
+systemctl enable --now clamav-freshclam
 command -v clamscan
 clamscan --version
+
+# Der erstmalige Signatur-Download muss abgeschlossen sein.
+if ! find /var/lib/clamav -maxdepth 1 -type f \\( -name 'daily.cvd' -o -name 'daily.cld' \\) | grep -q .; then
+  echo 'ClamAV hat noch keine daily-Signaturen. Erst freshclam-Journal prüfen.' >&2
+  journalctl -u clamav-freshclam -n 30 --no-pager
+  exit 1
+fi
 
 SRC=/tmp/smartify-clamav-patch
 if [ ! -d "$SRC/.git" ]; then
@@ -52,8 +63,8 @@ CUBI
 ## Erfolgskriterium
 
 Im Journal muss eine Meldung wie 'Cubi ClamAV CLEAN: apps=2 ...' erscheinen.
-Danach meldet publish_staging.py 'changed: false', sofern der Katalog unverändert geblieben ist.
-Einmalige private Scanberichte werden unter /srv/smartify/private-state/clamav-reports abgelegt.
+Danach meldet publish_staging.py 'changed: false', sofern der Katalog unverändert geblieben ist. Bei unveränderten Quellen, Signaturen und einem erfolgreichen Scan innerhalb von 12 Stunden erscheint stattdessen 'Cubi ClamAV CACHED_CLEAN': das Ergebnis wird sicher wiederverwendet, ohne das Signaturpaket alle zwei Minuten neu zu laden.
+Private Berichte über echte Scanläufe liegen unter /srv/smartify/private-state/clamav-reports; die Prüfcache-Datei unter /srv/smartify/private-state/clamav-last-clean.json. Sie darf niemals in den öffentlichen /v1-Verzeichnisbaum verschoben werden.
 
 ## Bei BLOCKED
 
@@ -63,3 +74,7 @@ Erst den Fehler prüfen (Signaturstand, Scannerfehler, Speicher/Timeout, Fund), 
 **Keine Scan-Umgehung einrichten.**
 
 Der GitHub-Release des Smartify App Managers muss dafür nicht neu installiert werden.
+
+## Warum ein Scan nicht jede Gefahr erkennt
+
+ClamAV kann bekannte Malware und verdächtige Archive finden; es validiert nicht die gesamte Python- oder JavaScript-Logik. Ein fehlerfreier Virenscan beweist keine Abwesenheit von Backdoors oder Bugs. Zusätzlich sind Code-Reviews und automatisierte Integrations-/Funktionstests sinnvoll.
