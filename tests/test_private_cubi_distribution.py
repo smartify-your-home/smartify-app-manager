@@ -1,5 +1,8 @@
 """Offline verification for private-release Cubi app packages, no network."""
 import hashlib
+from io import BytesIO
+from unittest.mock import patch
+from urllib.error import HTTPError
 import json
 from pathlib import Path
 import stat
@@ -84,6 +87,58 @@ class CubiPrivateDistributionTests(unittest.TestCase):
             build_catalog.build_staging(
                 self.policy, self.recipes, self.checkouts, self.out
             )
+
+    def test_public_release_falls_back_without_private_repo_token(self):
+        url = "https://api.github.com/repos/smartify-your-home/smartify-energy-pro/releases/latest"
+        requests = []
+
+        def open_stub(request, timeout):
+            authorized = request.get_header("Authorization") is not None
+            requests.append(authorized)
+            if authorized:
+                raise HTTPError(url, 404, "Not Found", {}, None)
+            return BytesIO(json.dumps({
+                "tag_name": "0.3.89", "draft": False,
+                "prerelease": False, "published_at": "2026-11-14T10:35:14Z",
+            }).encode())
+
+        with patch.object(fetch_releases.NO_REDIRECT, "open", side_effect=open_stub):
+            release, authenticated = fetch_releases.github_request_json(url, "scoped-token")
+        self.assertEqual(release["tag_name"], "0.3.89")
+        self.assertFalse(authenticated)
+        self.assertEqual(requests, [True, False])
+
+    def test_private_repository_auth_not_silently_bypassed(self):
+        url = "https://api.github.com/repos/smartify-your-home/smartify-raffstore/releases/latest"
+        requests = []
+
+        def open_stub(request, timeout):
+            requests.append(request.get_header("Authorization") is not None)
+            raise HTTPError(url, 404, "Not Found", {}, None)
+
+        with patch.object(fetch_releases.NO_REDIRECT, "open", side_effect=open_stub):
+            with self.assertRaisesRegex(fetch_releases.FetchError, "permissions"):
+                fetch_releases.github_request_json(url, "wrong-token")
+        self.assertEqual(requests, [True, False])
+
+    def test_public_tarball_fetch_has_no_bearer_header(self):
+        url = "https://api.github.com/repos/smartify-your-home/smartify-energy-pro/tarball/0.3.89"
+        def open_stub(request, timeout):
+            self.assertIsNone(request.get_header("Authorization"))
+            return BytesIO(b"tar-test")
+        with patch.object(fetch_releases.NO_REDIRECT, "open", side_effect=open_stub):
+            self.assertEqual(fetch_releases.fetch_private_tarball(url, None), b"tar-test")
+
+    def test_non_404_auth_error_does_not_retry_anonymously(self):
+        url = "https://api.github.com/repos/smartify-your-home/smartify-energy-pro/releases/latest"
+        calls = []
+        def open_stub(request, timeout):
+            calls.append(1)
+            raise HTTPError(url, 401, "Unauthorized", {}, None)
+        with patch.object(fetch_releases.NO_REDIRECT, "open", side_effect=open_stub):
+            with self.assertRaisesRegex(fetch_releases.FetchError, "401"):
+                fetch_releases.github_request_json(url, "bad-token")
+        self.assertEqual(len(calls), 1)
 
     def test_protected_token_and_invalid_redirect_helpers(self):
         token_file = self.work / "github-token"
