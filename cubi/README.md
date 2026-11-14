@@ -68,3 +68,28 @@ Bei einem **öffentlichen GitHub-Repository** verhindert die Cubi-Freigabeliste 
 Die Dateien dieses Verzeichnisses sind die **getestete Policy-Komponente**, nicht bereits eine produktive Cubi-Konfiguration. Die laufenden SEP-Dienste `smartify-sep-sync.service` und `smartify-sep-package.service` sind noch **nicht** auf die neue Policy umgestellt. Dieser Testzweig verändert keine laufenden LXC-Dienste und veröffentlicht keine internen Pakete.
 
 Vor produktiver Aktivierung separat prüfen: Eigentümer und Rechte der Policy, Integration in beide systemd-Services, automatische Entfernung zuvor veröffentlichter aber gesperrter Pakete, fehlgeschlagene und verweigerte Synchronisierung, vorhandene Tailscale-Serve-Freigaben sowie kundenspezifische Authentifizierung.
+
+## Verbindlicher ClamAV-Scan vor jeder Cubi-Veröffentlichung
+
+Die Pipeline ruft jetzt nach der ZIP-Erstellung und **vor** publish_staging.py das Skript cubi/scan_staging.py auf.
+
+1. Freigegebene, veröffentlichte GitHub-Releases abrufen.
+2. ZIPs, Icons und v1/catalog.json in einem privaten Staging-Verzeichnis erstellen.
+3. ClamAV prüft das gesamte Staging **und** die Source-Trees aller zur Veröffentlichung freigegebenen Apps.
+4. Erst bei einem vollständigen, sauberen Ergebnis wird der Katalog veröffentlicht.
+
+Die Prüfung verwendet /usr/bin/clamscan, keinen clamd-Daemon. Signaturen müssen mit freshclam aktualisiert werden. Die Option --fail-if-cvd-older-than=7 blockiert zu alte Signaturen, --alert-exceeds-max=yes blockiert Größen-/Rekursionsüberschreitungen. Es wird zusätzlich eine Scan-Zusammenfassung mit mindestens einer überprüften Datei und 0 Fundmeldungen verlangt.
+
+Rückgabecode 0 bedeutet sauber, 1 einen Malwareverdacht und 2 einen Scannerfehler. Bei jedem anderen Ergebnis, fehlendem Scanner, Scan-Timeout oder fehlerhaften Quell- bzw. ZIP-Dateien wird die Veröffentlichung **blockiert**. Die vorher freigegebene /v1-Version bleibt unverändert auf Cubi.
+
+Private Prüfberichte: /srv/smartify/private-state/clamav-reports/clamav-*.json. Das Journal enthält eine kurze CLEAN-/BLOCKED-Meldung.
+
+Prüfbefehle vom Proxmox-Host:
+
+    pct exec 230 -- bash -lc 'command -v clamscan && clamscan --version'
+    pct exec 230 -- systemctl status clamav-freshclam --no-pager
+    pct exec 230 -- journalctl -u smartify-cubi-catalog-refresh.service -n 40 --no-pager
+
+Der Scan läuft im aktuellen Teststand alle zwei Minuten vor der Veröffentlichung, auch wenn sich die Pakete nicht geändert haben. Das kostet zusätzliche CPU und RAM. Ein späterer Scan-Cache muss zwingend an die App-Hashes **und** den Signaturstand gebunden werden.
+
+ClamAV erkennt nicht jede unsichere oder manipulierte Python-/JavaScript-Logik. Eine ergänzende statische Analyse bleibt sinnvoll.
