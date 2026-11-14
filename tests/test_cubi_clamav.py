@@ -91,13 +91,13 @@ class CubiClamavGateTests(unittest.TestCase):
         database.mkdir(parents=True)
         (database / "daily.cvd").write_bytes(b"test definitions")
         scanner_file = self.reports.parent / "clamscan"
-        scanner_file.write_text("#!/bin/sh\\n")
+        scanner_file.write_text("#!/bin/sh\n")
         invocations = []
 
         def runner(command, **kwargs):
             invocations.append(command)
             return SimpleNamespace(
-                returncode=0, stdout="Scanned files: 7\\nInfected files: 0\\n",
+                returncode=0, stdout="Scanned files: 7\nInfected files: 0\n",
             )
 
         def scan_cached():
