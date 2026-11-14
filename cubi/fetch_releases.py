@@ -51,7 +51,14 @@ def token_from_file(filename: str | Path) -> str:
     return token
 
 
-def github_request_json(url: str, token: str) -> dict:
+def github_request_json(url: str, token: str) -> tuple[dict, bool]:
+    """Get a release: try the scoped PAT, then anonymous for public repos.
+
+    Fine-grained tokens restricted to selected private repos can receive a
+    misleading GitHub HTTP 404 when querying a different *public* repo.
+    Fallback is only allowed for HTTP 404; private repositories still require
+    a working token. The boolean says whether archive fetch needs the token.
+    """
     if urlparse(url).hostname != "api.github.com":
         raise FetchError("Unexpected metadata host")
     headers = {
@@ -60,28 +67,53 @@ def github_request_json(url: str, token: str) -> dict:
         "User-Agent": "smartify-cubi-private-release-sync",
         "X-GitHub-Api-Version": "2022-11-28",
     }
+    used_token = True
     try:
         with NO_REDIRECT.open(Request(url, headers=headers), timeout=25) as response:
             raw = response.read(262145)
-    except (HTTPError, URLError, TimeoutError) as exc:
-        raise FetchError(f"GitHub release metadata request failed: {type(exc).__name__} ({getattr(exc, 'code', 'network error')})") from exc
+    except HTTPError as err:
+        if err.code != 404:
+            raise FetchError(f"GitHub release metadata: HTTP {err.code}") from err
+        # Do not forward credentials to the public/anonymous request.
+        public_headers = {key: value for key, value in headers.items()
+                          if key != "Authorization"}
+        try:
+            with NO_REDIRECT.open(Request(url, headers=public_headers), timeout=25) as response:
+                raw = response.read(262145)
+            used_token = False
+        except HTTPError as public_err:
+            raise FetchError(
+                f"Release not available: authenticated HTTP 404, "
+                f"anonymous HTTP {public_err.code}. Check GitHub token "
+                "repository selection/permissions and published releases."
+            ) from public_err
+        except (URLError, TimeoutError) as public_err:
+            raise FetchError(
+                f"Public release retry failed: {type(public_err).__name__}"
+            ) from public_err
+    except (URLError, TimeoutError) as err:
+        raise FetchError(f"GitHub release metadata request failed: {type(err).__name__}") from err
     if len(raw) > 262144:
         raise FetchError("Release metadata oversized")
-    data = json.loads(raw)
+    try:
+        data = json.loads(raw)
+    except (ValueError, UnicodeDecodeError) as err:
+        raise FetchError("Invalid release JSON") from err
     if not isinstance(data, dict):
         raise FetchError("Invalid release metadata")
-    return data
+    return data, used_token
 
-
-def fetch_private_tarball(url: str, token: str) -> bytes:
+def fetch_private_tarball(url: str, token: str | None) -> bytes:
     """One GitHub API redirect only; never forward the private token to a redirect."""
     if urlparse(url).hostname != "api.github.com":
         raise FetchError("Unexpected tarball origin")
-    req = Request(url, headers={
-        "Authorization": f"Bearer {token}",
+    request_headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "smartify-cubi-private-release-sync",
-    })
+    }
+    if token is not None:
+        request_headers["Authorization"] = f"Bearer {token}"
+    req = Request(url, headers=request_headers)
     try:
         with NO_REDIRECT.open(req, timeout=40) as response:
             raw = response.read(MAX_ARCHIVE_BYTES + 1)
@@ -161,7 +193,10 @@ def sync_approved(policy_file: Path, token_file: Path, checkouts: Path) -> list[
         if not is_allowed(policy, repo, "sync"):
             continue
         url = f"https://api.github.com/repos/{policy['github_owner']}/{repo}/releases/latest"
-        release = github_request_json(url, token)
+        try:
+            release, authenticated = github_request_json(url, token)
+        except FetchError as err:
+            raise FetchError(f"{repo}: {err}") from err
         tag = release.get("tag_name")
         if (not isinstance(tag, str) or not RELEASE_TAG.fullmatch(tag)
                 or release.get("draft") is not False
@@ -178,7 +213,10 @@ def sync_approved(policy_file: Path, token_file: Path, checkouts: Path) -> list[
             f"https://api.github.com/repos/{policy['github_owner']}/{repo}"
             f"/tarball/{quote(tag, safe='')}"
         )
-        archive = fetch_private_tarball(archive_url, token)
+        try:
+            archive = fetch_private_tarball(archive_url, token if authenticated else None)
+        except FetchError as err:
+            raise FetchError(f"{repo}: {err}") from err
         # Never stage beneath the public Tailscale Serve root.
         with tempfile.TemporaryDirectory(prefix=".cubi-fetch-", dir=checkouts) as temp:
             staged = Path(temp) / repo
