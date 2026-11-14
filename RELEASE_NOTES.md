@@ -1,5 +1,15 @@
 # Release Notes
 
+## Unreleased – Cubi security gate: mandatory ClamAV scan
+
+- The Cubi 2-minute package service now scans each candidate publication and its downloaded GitHub release source with ClamAV prior to making it available to customers.
+- No publication on scanner errors, outdated signature databases, malware matches or timeouts; the last published catalog stays online.
+- Private scan reports: /srv/smartify/private-state/clamav-reports. ClamAV must already be installed in LXC 230, with current signatures.
+- Server-side only: requires installing cubi/scan_staging.py and the updated cubi/refresh.sh and service unit. The Manager stays at v0.4.1 pending a separate UI release.
+
+---
+
+
 ## v0.4.1 – 2026-11-14 · Stabiler Cubi-Abgleich und Icon-Fix (Testrelease)
 
 - **Cubi synchronisiert weiterhin alle 2 Minuten**, veröffentlicht jedoch keine identischen Paketbestände mehr. Dadurch keine unnötigen Backups und keine kurzzeitigen Dateiwechsel.
