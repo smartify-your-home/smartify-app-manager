@@ -11,6 +11,8 @@ signatures, scan timeout, unreadable files or malware always block publication.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import time
 from datetime import datetime, timezone
 import json
 import os
@@ -25,6 +27,8 @@ from publish_staging import audit_staging
 
 SCANNER = "/usr/bin/clamscan"
 MAX_SIGNATURE_AGE_DAYS = 7
+MAX_RESCAN_HOURS = 12
+SIGNATURE_DIR = Path('/var/lib/clamav')
 SCAN_TIMEOUT_SECONDS = 140
 SCANNED = re.compile(r"(?m)^\s*Scanned files:\s*(\d+)\s*$")
 INFECTED = re.compile(r"(?m)^\s*Infected files:\s*(\d+)\s*$")
@@ -76,6 +80,68 @@ def _report(report_dir: Path, result: dict) -> Path:
     return output
 
 
+def _digest_sources(directories: list[str]) -> str:
+    """Hash exact package/source bytes, so changed files force a new scan."""
+    digest = hashlib.sha256()
+    for directory in sorted(directories):
+        root = Path(directory)
+        for item in sorted(root.rglob("*")):
+            if item.is_symlink():
+                raise ScanRejected(f"Symlink in scan input: {item}")
+            if not item.is_file():
+                continue
+            digest.update(str(item.relative_to(root)).encode("utf-8"))
+            with item.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _signature_fingerprint(database_dir: Path) -> str:
+    """Require recent ClamAV signatures, including for cached clean scans."""
+    if database_dir.is_symlink() or not database_dir.is_dir():
+        raise ScanRejected("ClamAV signature directory missing or unsafe")
+    definitions = sorted(
+        file for file in database_dir.iterdir()
+        if file.suffix in {".cvd", ".cld", ".cud"}
+        and file.name.split(".")[0] in {"main", "daily", "bytecode"}
+        and file.is_file() and not file.is_symlink()
+    )
+    if not definitions:
+        raise ScanRejected("ClamAV signature files not installed (freshclam)")
+    newest = max(file.stat().st_mtime for file in definitions)
+    if time.time() - newest > MAX_SIGNATURE_AGE_DAYS * 86400:
+        raise ScanRejected("ClamAV signature files older than 7 days")
+    summary = [(file.name, file.stat().st_size, file.stat().st_mtime_ns)
+               for file in definitions]
+    return hashlib.sha256(json.dumps(summary).encode("utf-8")).hexdigest()
+
+
+def _read_cache(filename: Path) -> dict | None:
+    if filename.is_symlink() or not filename.is_file():
+        return None
+    try:
+        data = json.loads(filename.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _write_cache(filename: Path, payload: dict) -> None:
+    if filename.is_symlink() or filename.parent.is_symlink():
+        raise ScanRejected("Unsafe ClamAV clean-cache location")
+    filename.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=filename.parent,
+        prefix=".clamav-clean-", delete=False,
+    ) as tmp:
+        os.fchmod(tmp.fileno(), 0o600)
+        json.dump(payload, tmp, ensure_ascii=False, indent=2)
+        tmp.write("\n")
+        tmpname = Path(tmp.name)
+    os.replace(tmpname, filename)
+
+
 def scan_staging(
     staging: Path,
     checkouts: Path,
@@ -85,6 +151,8 @@ def scan_staging(
     *,
     scanner: str = SCANNER,
     runner=subprocess.run,
+    cache_enabled: bool = False,
+    signatures_dir: Path = SIGNATURE_DIR,
 ) -> dict:
     """Return an audit result on success; raise ScanRejected on any failure.
 
@@ -109,11 +177,36 @@ def scan_staging(
             raise ScanRejected(f"Publication not approved: {item['id']}")
         inputs.append(str(_validate_source_tree(checkouts, repo)))
         repositories.append(repo)
+    # The two-minute timer must not reload ClamAV's sizeable database on
+    # every unchanged catalog. Cache only the latest *verified* clean scan,
+    # bound to exact source/package bytes and current database signatures.
+    scan_fingerprint = None
+    signature_fingerprint = None
+    cache_file = report_dir.parent / "clamav-last-clean.json"
+    if cache_enabled:
+        if not Path(scanner).is_file():
+            raise ScanRejected("ClamAV scanner executable missing")
+        signature_fingerprint = _signature_fingerprint(signatures_dir)
+        scan_fingerprint = _digest_sources(inputs)
+        cached = _read_cache(cache_file)
+        now = time.time()
+        if (cached is not None
+                and cached.get("status") == "CLEAN"
+                and cached.get("scan_digest") == scan_fingerprint
+                and cached.get("signature_digest") == signature_fingerprint
+                and isinstance(cached.get("completed_epoch"), (int, float))
+                and 0 <= now - cached["completed_epoch"] < MAX_RESCAN_HOURS * 3600):
+            print("Cubi ClamAV CACHED_CLEAN: unchanged releases and signatures")
+            return {"status": "CLEAN", "cached": True,
+                    "apps": [{"id": x["id"], "version": x["version"]}
+                             for x in catalog["apps"]]}
+
     # Must verify scan succeeded and actually touched files, not just exit 0.
     command = [
         scanner,
-        "--recursive=yes",
+        "--recursive",
         "--infected",
+        "--alert-encrypted-archive=yes",
         "--scan-archive=yes",
         "--alert-exceeds-max=yes",
         "--fail-if-cvd-older-than=7",
@@ -176,6 +269,13 @@ def scan_staging(
             f"report={path}",
             flush=True,
         )
+    if cache_enabled:
+        _write_cache(cache_file, {
+            "status": "CLEAN",
+            "completed_epoch": time.time(),
+            "scan_digest": scan_fingerprint,
+            "signature_digest": signature_fingerprint,
+        })
     return result
 
 
@@ -194,6 +294,7 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.policy),
             Path(args.recipes),
             Path(args.report_dir),
+            cache_enabled=True,
         )
     except (ScanRejected, BuildError, OSError, ValueError) as error:
         print(f"BLOCKED: Cubi will retain previous catalog. {error}", flush=True)
