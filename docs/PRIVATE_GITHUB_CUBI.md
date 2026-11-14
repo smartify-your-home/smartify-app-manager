@@ -17,6 +17,8 @@ Die globale Paket-Policy liegt unter /etc/smartify/package-policy.json und erlau
 
 Der Server erzeugt den Katalog unter /srv/smartify/releases/v1/catalog.json sowie ZIP-Pakete und echte Icons unter /v1/<app-id>/. Der neue v1-Katalog wird nur aus geprüften Freigaben gebaut und als vollständiger Snapshot atomar publiziert. Der alte /sep/-Testweg bleibt separat bestehen.
 
+**ClamAV-Pflichtprüfung:** Vor jedem neuen /v1-Veröffentlichungsversuch scannt das Cubi-Skript scan_staging.py mit clamscan alle freigegebenen heruntergeladenen GitHub-Release-Quellen und die erzeugten ZIPs/Icons. Bei fehlendem Scanner, veralteten Signaturen, Virusfund oder Scanfehler wird die Veröffentlichung abgebrochen. Der zuletzt veröffentlichte Katalog bleibt unverändert. Private Scanberichte liegen in /srv/smartify/private-state/clamav-reports.
+
 Der Smartify App Manager prüft /v1/catalog.json alle 120 Sekunden unabhängig vom geöffneten Panel. Offizielle HA-Update-Entitäten werden pro erkannter installierter App angelegt.
 
 ## Installationsarten
