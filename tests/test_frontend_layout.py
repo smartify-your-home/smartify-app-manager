@@ -30,6 +30,17 @@ class AppListLayoutTests(unittest.TestCase):
             with self.subTest(required=required):
                 self.assertIn(required, self.source)
 
+    def test_icon_has_immediate_fallback_and_cached_load_handler(self):
+        source = self.source
+        self.assertIn("data-smartify-src", source)
+        self.assertIn("img.addEventListener('load'", source)
+        self.assertIn("img.addEventListener('error'", source)
+        self.assertLess(source.index("img.addEventListener('load'"),
+                        source.index("img.src = img.dataset.smartifySrc"))
+        self.assertLess(source.index("img.addEventListener('error'"),
+                        source.index("img.src = img.dataset.smartifySrc"))
+        self.assertIn("this._cubiCatalog.stale", source)
+
     def test_mobile_actions_wrap_below_details(self):
         self.assertIn("@media (max-width:720px)", self.source)
         self.assertIn(".app-actions{grid-column:2;justify-content:flex-start}", self.source)
