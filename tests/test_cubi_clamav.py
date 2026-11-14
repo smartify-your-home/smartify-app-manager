@@ -53,6 +53,14 @@ class CubiClamavGateTests(unittest.TestCase):
         self.assertEqual(document["apps"][0]["version"], "0.3.87")
         return document
 
+    def test_refresh_script_enforces_clamav_before_publish(self):
+        pipeline = (ROOT / "cubi" / "refresh.sh").read_text()
+        self.assertLess(pipeline.index("build_catalog.py"),
+                        pipeline.index("scan_staging.py"))
+        self.assertLess(pipeline.index("scan_staging.py"),
+                        pipeline.index("publish_staging.py"))
+        self.assertIn("set -euo pipefail", pipeline)
+
     def test_scan_covers_source_and_zip_before_publication(self):
         def fake(command, **kwargs):
             self.assertEqual(command[0], "/usr/bin/clamscan")
