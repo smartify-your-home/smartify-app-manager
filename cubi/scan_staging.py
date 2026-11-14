@@ -216,7 +216,7 @@ def scan_staging(
         "--max-scansize=512M",
         "--max-files=5000",
         "--max-recursion=20",
-        "--max-scantime=110000",
+        "--max-scantime=0",
         *inputs,
     ]
     result = {
