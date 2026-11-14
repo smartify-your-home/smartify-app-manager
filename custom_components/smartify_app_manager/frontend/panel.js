@@ -88,13 +88,22 @@ class SmartifyAppManagerPanel extends HTMLElement {
     if (!this._hass) return;
     try {
       const data = await this._hass.callWS({type:'smartify_app_manager/cubi_apps'});
-      this._cubiCatalog = {
-        ready: !!(data.connected && data.configured && !data.catalog_pending),
-        pending: !!data.catalog_pending,
-        apps: Array.isArray(data.apps) ? data.apps : [],
-      };
+      if (!data.connected && this._cubiCatalog.ready) {
+        // Retain the last approved catalog and its local icon URLs if Cubi
+        // is briefly unreachable. Do not offer installs from stale data.
+        this._cubiCatalog = {...this._cubiCatalog, stale:true};
+      } else {
+        this._cubiCatalog = {
+          ready: !!(data.connected && data.configured && !data.catalog_pending),
+          pending: !!data.catalog_pending,
+          stale: false,
+          apps: Array.isArray(data.apps) ? data.apps : [],
+        };
+      }
     } catch (err) {
-      this._cubiCatalog = {ready:false,pending:false,apps:[],error:String(err.message||err)};
+      this._cubiCatalog = this._cubiCatalog.ready
+        ? {...this._cubiCatalog, stale:true, error:String(err.message||err)}
+        : {ready:false,pending:false,stale:false,apps:[],error:String(err.message||err)};
     }
     this.render();
   }
@@ -107,7 +116,9 @@ class SmartifyAppManagerPanel extends HTMLElement {
         meta = escape(app.kind)+' · Installiert: '+escape(installed)+' · Cubi: '+escape(app.version)+status;
         if (app.install_supported) {
           const action = app.installed_version ? 'Aktualisieren' : 'Installieren';
-          actions = '<button class="primary" data-install="'+escape(app.id)+'">'+action+'</button>';
+          actions = this._cubiCatalog.stale
+            ? '<button disabled title="Cubi vorübergehend nicht erreichbar">Cubi nicht erreichbar</button>'
+            : '<button class="primary" data-install="'+escape(app.id)+'">'+action+'</button>';
         } else {
           actions = '<span class="notice">Installation über HA Apps erforderlich</span>';
         }
@@ -174,15 +185,15 @@ class SmartifyAppManagerPanel extends HTMLElement {
         const fallback = SMARTIFY_FALLBACK_ICONS[app.id] || 'mdi:apps';
         const local = app.local_icon_url;
         return local
-          ? `<img src="${local}" alt="" loading="lazy" decoding="async"><ha-icon icon="${fallback}" hidden></ha-icon>`
+          ? `<img data-smartify-src="${local}" alt="" hidden decoding="async"><ha-icon icon="${fallback}"></ha-icon>`
           : `<ha-icon icon="${fallback}"></ha-icon>`;
       }
       const path = SMARTIFY_ORIGINAL_ICONS[app.id];
       const fallback = SMARTIFY_FALLBACK_ICONS[app.id] || 'mdi:apps';
       const original = path
-        ? `<img src="https://raw.githubusercontent.com/smartify-your-home/${path}" alt="" loading="lazy" decoding="async">`
+        ? `<img data-smartify-src="https://raw.githubusercontent.com/smartify-your-home/${path}" alt="" hidden decoding="async">`
         : '';
-      return `${original}<ha-icon icon="${fallback}" ${path ? 'hidden' : ''}></ha-icon>`;
+      return `${original}<ha-icon icon="${fallback}"></ha-icon>`;
     };
     const escape = v => String(v ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     this.shadowRoot.innerHTML = `
@@ -214,6 +225,7 @@ class SmartifyAppManagerPanel extends HTMLElement {
         ${this._syncError?`<p class="warn" role="status">${escape(this._syncError)}</p>`:''}
         ${this._error?`<p class="warn" role="alert">${escape(this._error)}</p>`:''}${this._success?`<p class="ok" role="status">${escape(this._success)}</p>`:''}
         ${!customerMode && this._kubi.configured ? '<p class="notice warn" role="status">Der neue Cubi-App-Katalog (/v1/catalog.json) ist noch nicht erreichbar. Die bestehende SEP-Paketquelle kann weiter genutzt werden.</p>' : ''}
+        ${customerMode && this._cubiCatalog.stale ? '<p class="notice warn" role="status">Cubi momentan nicht erreichbar: letzter freigegebener App-Katalog und lokale Icons bleiben sichtbar. Installationen sind vorübergehend gesperrt.</p>' : ''}
         <section class="panel"><h2>Smartify Apps</h2><div class="notice">${customerMode ? 'Installationen und Updates erfolgen über Cubi. Es werden ausschließlich freigegebene Pakete angezeigt.' : 'GitHub-Übergangskatalog. Die Kundenansicht wird nach Freigabe des Cubi-Katalogs aktiv.'}</div>
           <div class="apps-list" role="list">${this.renderApps(displayApps, customerMode, escape, appIcon)}</div>
         </section>
@@ -226,12 +238,19 @@ class SmartifyAppManagerPanel extends HTMLElement {
     this.shadowRoot.querySelector('#kubi-check').onclick=()=>{this.checkKubi();this.checkCubiCatalog();};
     const kubiDownload=this.shadowRoot.querySelector('#kubi-download');
     if(kubiDownload)kubiDownload.onclick=()=>this.downloadKubi();
-    this.shadowRoot.querySelectorAll('.app-icon img').forEach(img => {
+    this.shadowRoot.querySelectorAll('.app-icon img[data-smartify-src]').forEach(img => {
+      // Bind the handlers BEFORE setting src. Otherwise cached 404s may
+      // complete before the error handler exists, leaving a blank icon.
+      const fallback = img.parentElement.querySelector('ha-icon');
+      img.addEventListener('load', () => {
+        img.hidden = false;
+        if (fallback) fallback.hidden = true;
+      }, {once:true});
       img.addEventListener('error', () => {
         img.hidden = true;
-        const fallback = img.parentElement.querySelector('ha-icon');
         if (fallback) fallback.hidden = false;
       }, {once:true});
+      img.src = img.dataset.smartifySrc;
     });
     this.shadowRoot.querySelectorAll('button[data-id]').forEach(button=>button.onclick=()=>this.setLock(button.dataset.id,button.dataset.locked==='true'));
     this.shadowRoot.querySelectorAll('button[data-install]').forEach(button=>button.onclick=()=>this.installCubiApp(button.dataset.install));
