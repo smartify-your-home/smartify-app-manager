@@ -11,7 +11,7 @@ class CatalogTests(unittest.TestCase):
     def test_manifest(self):
         d=json.loads((MODULE/'manifest.json').read_text())
         self.assertEqual(d['domain'],'smartify_app_manager')
-        self.assertEqual(d['version'],'0.4.0')
+        self.assertEqual(d['version'],'0.4.1')
     def test_marketplace_manifest(self):
         d=json.loads((ROOT/'hacs.json').read_text())
         self.assertEqual(d['name'], 'Smartify App Manager')
