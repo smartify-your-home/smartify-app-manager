@@ -187,9 +187,21 @@ class CubiCatalogCoordinator(DataUpdateCoordinator[dict]):
             destination = self.hass.config.path(
                 "www", "smartify-manager-icons", name
             )
+            local_url = f"/local/smartify-manager-icons/{name}"
             if Path(destination).is_file():
-                app["local_icon_url"] = f"/local/smartify-manager-icons/{name}"
+                app["local_icon_url"] = local_url
                 continue
+            # A fresh release might arrive while Cubi is temporarily offline.
+            # Keep displaying the last downloaded image of the same app.
+            cached = sorted(
+                Path(destination).parent.glob(f"{app['id']}-*.png"),
+                key=lambda p: p.stat().st_mtime if p.is_file() else 0,
+                reverse=True,
+            ) if Path(destination).parent.is_dir() else []
+            if cached:
+                app["local_icon_url"] = (
+                    f"/local/smartify-manager-icons/{cached[0].name}"
+                )
             try:
                 async with session.get(
                     base_url + path,
@@ -197,12 +209,13 @@ class CubiCatalogCoordinator(DataUpdateCoordinator[dict]):
                     timeout=ClientTimeout(total=8, sock_connect=4),
                 ) as response:
                     if response.status != 200:
+                        LOGGER.debug("Cubi icon for %s: HTTP %s", app["id"], response.status)
                         continue
                     raw = await response.content.read(1024 * 1024 + 1)
                     if len(raw) > 1024 * 1024:
                         continue
                 await self.hass.async_add_executor_job(_write_icon, destination, raw)
-                app["local_icon_url"] = f"/local/smartify-manager-icons/{name}"
+                app["local_icon_url"] = local_url
             except (KubiError, ClientError, OSError, asyncio.TimeoutError) as exc:
                 LOGGER.debug("Cubi icon fetch for %s failed: %s", app["id"], exc)
 
