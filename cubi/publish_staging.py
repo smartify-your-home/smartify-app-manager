@@ -7,6 +7,7 @@ and on the same filesystem. A revoked app cannot remain in the new v1 set.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -50,7 +51,6 @@ def audit_staging(staging: Path, policy_file: Path, recipes_file: Path) -> dict:
         zipfile = folder / zipname
         if zipfile.is_symlink() or not zipfile.is_file():
             raise BuildError(f"Missing zip file: {ident}")
-        import hashlib
         if hashlib.sha256(zipfile.read_bytes()).hexdigest() != item["sha256"]:
             raise BuildError(f"Invalid ZIP checksum: {ident}")
         expected_files = {zipname}
@@ -63,6 +63,28 @@ def audit_staging(staging: Path, policy_file: Path, recipes_file: Path) -> dict:
     if actual_dirs != expected_dirs:
         raise BuildError("Unapproved, stale or extra files in staging root")
     return catalog
+
+
+def _same_snapshot(stage: Path, published: Path) -> bool:
+    """Avoid changing published assets or creating backups when files match."""
+    if not published.is_dir() or published.is_symlink():
+        return False
+
+    def contents(root: Path) -> dict[str, str] | None:
+        files = {}
+        for item in root.rglob("*"):
+            if item.is_symlink():
+                return None
+            if item.is_file():
+                relative = item.relative_to(root).as_posix()
+                with item.open("rb") as stream:
+                    digest = hashlib.sha256()
+                    for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                        digest.update(chunk)
+                files[relative] = digest.hexdigest()
+        return files
+
+    return contents(stage) == contents(published)
 
 
 def publish(
@@ -83,6 +105,8 @@ def publish(
         raise BuildError("Staging must not be in public directory")
     if staging.stat().st_dev != root.stat().st_dev:
         raise BuildError("Staging and public directory must share filesystem")
+    if _same_snapshot(staging, old):
+        return {"apps": len(catalog["apps"]), "backup": "", "changed": False}
     moved_old = None
     if old.exists():
         moved_old = Path(tempfile.mkdtemp(prefix="cubi-v1-old-", dir=backup_parent))
@@ -95,7 +119,7 @@ def publish(
             os.replace(moved_old, old)
         raise
     # Backups are intentionally retained privately for manual rollback.
-    return {"apps": len(catalog["apps"]), "backup": str(moved_old) if moved_old else ""}
+    return {"apps": len(catalog["apps"]), "backup": str(moved_old) if moved_old else "", "changed": True}
 
 
 def main(argv: list[str] | None = None) -> int:
