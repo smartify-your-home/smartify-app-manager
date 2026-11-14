@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.1] – 2026-11-14 · Cubi-Polling und zuverlässige App-Icons (Testrelease)
+
+- Neuer Cubi-Stand wird alle zwei Minuten nur dann veröffentlicht, wenn sich Pakete, Icons oder Katalog wirklich geändert haben. So entstehen keine unnötigen Backups oder kurzzeitigen Dateiwechsel beim Abruf.
+- SEP-App-Icon und andere Original-Icons: Bild-Events sind vor der Bildanforderung registriert; Ersatzicon bleibt sichtbar, bis das lokale PNG erfolgreich geladen ist.
+- Bei kurzzeitiger Cubi-Unterbrechung bleibt der zuletzt erfolgreiche App-Katalog samt gecachten Original-Icons sichtbar. Installationsschaltflächen sind in diesem Fall gesperrt.
+- Wenn eine neue App-Version vorübergehend kein erreichbares Icon liefert, bleibt das zuletzt lokal gespeicherte Icon derselben App sichtbar.
+- Regressionstests für unveränderte Veröffentlichung und Icon-Fallbacks ergänzt.
+- Neue Version ist weiterhin ein Teststand; private Cubi-Synchronisation erfordert Installation des systemd-Timers auf LXC 230.
+
 ## [0.4.0] – 2026-11-13 · Privater Cubi-Paketweg (Testrelease)
 
 - Cubi ruft nur explizit freigegebene veröffentlichte GitHub-Releases ab; private Repositories mit einem lokal gesicherten Read-only-Token, nie vom Kunden.
