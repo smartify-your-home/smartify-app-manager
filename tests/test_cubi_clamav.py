@@ -70,6 +70,7 @@ class CubiClamavGateTests(unittest.TestCase):
             self.assertIn("--scan-archive=yes", command)
             self.assertIn("--fail-if-cvd-older-than=7", command)
             self.assertIn("--alert-exceeds-max=yes", command)
+            self.assertIn("--max-scantime=0", command)
             self.assertIn(str(self.stage.resolve()), command)
             self.assertIn(
                 str((self.checkouts / "smartify-energy-pro" / "src").resolve()),
