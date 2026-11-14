@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "cubi"))
 import build_catalog
 import fetch_releases
 import package_policy
+import publish_staging
 
 
 class CubiPrivateDistributionTests(unittest.TestCase):
@@ -60,6 +61,30 @@ class CubiPrivateDistributionTests(unittest.TestCase):
         self.assertNotIn("cubi-release.json", names)
         self.assertTrue((self.out / "energy-pro" / "icon-0.3.87.png").exists())
         self.assertNotIn("smartify-tailnet-viewer", json.dumps(result))
+
+    def test_publish_does_not_create_backups_when_catalog_unchanged(self):
+        build_catalog.build_staging(
+            self.policy, self.recipes, self.checkouts, self.out
+        )
+        public = self.work / "releases"
+        backups = self.work / "private-backups"
+        public.mkdir()
+        first = publish_staging.publish(
+            self.out, public, backups, self.policy, self.recipes
+        )
+        self.assertTrue(first["changed"])
+        self.assertEqual(first["apps"], 1)
+        next_stage = self.work / "next"
+        build_catalog.build_staging(
+            self.policy, self.recipes, self.checkouts, next_stage
+        )
+        second = publish_staging.publish(
+            next_stage, public, backups, self.policy, self.recipes
+        )
+        self.assertFalse(second["changed"])
+        self.assertEqual(second["backup"], "")
+        self.assertFalse(any(backups.iterdir()))
+        self.assertTrue((public / "v1/catalog.json").is_file())
 
     def test_mismatched_release_fails_closed(self):
         (self.src / "manifest.json").write_text(json.dumps({
