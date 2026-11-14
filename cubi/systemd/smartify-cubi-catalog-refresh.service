@@ -13,4 +13,4 @@ PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
 ReadWritePaths=/srv/smartify
-TimeoutStartSec=180
+TimeoutStartSec=300

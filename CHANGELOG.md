@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased – Cubi ClamAV scan gate (LXC 230)
+
+- Cubi verifies staged customer ZIPs, icons and every approved release source tree with ClamAV before the /v1 catalog may be published.
+- Missing scanner, stale signature database (>7 days), detected malware, exceeded scan limits, incomplete scan summary and scanner errors block all new publication; the existing /v1 catalog stays unchanged.
+- Private JSON scan reports and journal status are generated; no scanner credentials or reports are exposed to customer endpoints.
+- Release refresh service timeout is extended for the bounded scan; the existing two-minute timer remains in place.
+- No Home Assistant frontend or manager-version change is required for this server-side addition. Deployment to LXC 230 is manual.
+
+
 ## [0.4.1] – 2026-11-14 · Cubi-Polling und zuverlässige App-Icons (Testrelease)
 
 - Neuer Cubi-Stand wird alle zwei Minuten nur dann veröffentlicht, wenn sich Pakete, Icons oder Katalog wirklich geändert haben. So entstehen keine unnötigen Backups oder kurzzeitigen Dateiwechsel beim Abruf.

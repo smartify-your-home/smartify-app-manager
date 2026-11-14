@@ -21,6 +21,16 @@ trap cleanup EXIT
   --checkouts /srv/smartify/private-checkouts \
   --output "$STAGE/v1"
 
+# Fail closed: never expose a new candidate until ClamAV approves BOTH
+# the downloaded source trees and built ZIPs/icons. On any nonzero exit
+# the trap removes only this private staging folder; /v1 is untouched.
+/usr/bin/python3 /usr/local/lib/smartify/cubi/scan_staging.py \
+  --policy /etc/smartify/package-policy.json \
+  --recipes /usr/local/lib/smartify/cubi/app-recipes.json \
+  --checkouts /srv/smartify/private-checkouts \
+  --stage "$STAGE/v1" \
+  --report-dir /srv/smartify/private-state/clamav-reports
+
 /usr/bin/python3 /usr/local/lib/smartify/cubi/publish_staging.py \
   --policy /etc/smartify/package-policy.json \
   --recipes /usr/local/lib/smartify/cubi/app-recipes.json \
