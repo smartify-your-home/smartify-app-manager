@@ -1,4 +1,4 @@
-# Smartify App Manager v0.4.0 (Testrelease)
+# Smartify App Manager v0.4.1 (Testrelease)
 
 > **Cubi package allowlist:** New Smartify GitHub repositories are never automatically synchronized or offered to customers. Cubi has a separate global sync/publication policy with **default deny**, plus future per-customer entitlements. The allowlist reference implementation and example are under [`cubi/`](cubi/README.md); it is **not yet enabled on the running Cubi services**. The existing client GitHub catalog must be replaced with the Cubi-filtered catalog before customer production.
 
