@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.4.1 – 2026-11-14 · Stabiler Cubi-Abgleich und Icon-Fix (Testrelease)
+
+- **Cubi synchronisiert weiterhin alle 2 Minuten**, veröffentlicht jedoch keine identischen Paketbestände mehr. Dadurch keine unnötigen Backups und keine kurzzeitigen Dateiwechsel.
+- SEP-Icon und weitere App-Icons laden zuverlässig; bis zum Laden wird ein Fallback angezeigt.
+- Die zuletzt geladenen Original-Icons bleiben bei kurzzeitigen Cubi-Ausfällen erhalten.
+- Änderungen an Cubi-Programmen müssen separat auf LXC 230 übernommen und der systemd-Timer aktiviert werden. Ein GitHub-Release aktualisiert Cubi nicht selbst.
+
+---
+
 ## v0.4.0 – 2026-11-13 · Private GitHub-Releases über Cubi (Testrelease)
 
 - Du kannst Apps in privaten GitHub-Repositories entwickeln. Nur Cubi erhält ein eingeschränktes GitHub-Lesetoken; Kunden benötigen weder GitHub-Konto noch Token.
