@@ -90,6 +90,6 @@ Prüfbefehle vom Proxmox-Host:
     pct exec 230 -- systemctl status clamav-freshclam --no-pager
     pct exec 230 -- journalctl -u smartify-cubi-catalog-refresh.service -n 40 --no-pager
 
-Der Scan läuft im aktuellen Teststand alle zwei Minuten vor der Veröffentlichung, auch wenn sich die Pakete nicht geändert haben. Das kostet zusätzliche CPU und RAM. Ein späterer Scan-Cache muss zwingend an die App-Hashes **und** den Signaturstand gebunden werden.
+Der Abgleich läuft alle zwei Minuten. Bei unverändertem App-/Quellcodeinhalt **und** unveränderten aktuellen ClamAV-Signaturen kann der letzte belegte CLEAN-Scan maximal 12 Stunden wiederverwendet werden (`clamav-last-clean.json` im privaten Statusordner). Jede Inhalts- oder Signaturänderung erzwingt einen neuen echten Scan. Fehlende oder überalterte Signaturen blockieren die Freigabe auch bei vorhandenem Cache. So wird die ClamAV-Datenbank nicht unnötig alle zwei Minuten erneut geladen.
 
 ClamAV erkennt nicht jede unsichere oder manipulierte Python-/JavaScript-Logik. Eine ergänzende statische Analyse bleibt sinnvoll.
